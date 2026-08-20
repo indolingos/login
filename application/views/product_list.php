@@ -52,8 +52,10 @@
 
     <div id="alertPlaceholder"></div>
 
-    <div class="card">
+    <div class="card mb-4">
         <div class="card-body">
+
+            <h5 class="mb-3"><i class="bi bi-box-seam me-2"></i>Product Datas</h5>
 
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div class="input-group" style="max-width: 340px;">
@@ -69,6 +71,9 @@
                             <i class="bi bi-gear"></i>
                         </button>
                     </div>
+                    <button type="button" class="btn btn-outline-primary" id="btnAddToCart">
+                        <i class="bi bi-cart-plus me-1"></i>Tambah ke Daftar Beli
+                    </button>
                     <button type="button" class="btn btn-primary" id="btnAdd">
                         <i class="bi bi-plus-lg me-1"></i>Tambah Product
                     </button>
@@ -79,6 +84,7 @@
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr id="tableHeadRow">
+                            <th style="width:36px;"><input type="checkbox" class="form-check-input" id="checkAllProducts" title="Pilih semua"></th>
                             <th style="width:40px;">No</th>
                             <th>Kode</th>
                             <th>Nama</th>
@@ -92,7 +98,7 @@
                     </thead>
                     <tbody id="productTableBody">
                         <tr id="tableLoading">
-                            <td colspan="9" class="text-center py-4 text-muted">
+                            <td colspan="10" class="text-center py-4 text-muted">
                                 <div class="spinner-border spinner-border-sm me-2"></div>Memuat data...
                             </td>
                         </tr>
@@ -116,6 +122,43 @@
                         <ul class="pagination pagination-sm mb-0" id="paginationControls"></ul>
                     </nav>
                 </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+
+            <h5 class="mb-3"><i class="bi bi-cart-check me-2"></i>Barang yang mau dibeli konsumer</h5>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:40px;">No</th>
+                            <th>Kode</th>
+                            <th>Nama</th>
+                            <th>Kategori</th>
+                            <th class="text-end">Harga</th>
+                            <th class="text-end" style="width:110px;">Qty</th>
+                            <th class="text-end">Subtotal</th>
+                            <th style="width:70px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartTableBody">
+                        <tr id="cartEmptyRow">
+                            <td colspan="8" class="text-center text-muted py-4">Belum ada barang yang dipilih untuk dibeli.</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr id="cartTotalRow" class="d-none">
+                            <th colspan="6" class="text-end">Total</th>
+                            <th class="text-end" id="cartGrandTotal">Rp 0</th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
 
         </div>
@@ -289,6 +332,7 @@ $(function () {
     var PAGE_SIZE = 10;
     var currentPage = 1;
     var allRows = [];
+    var cart = {}; // keyed by id_product -> { id_product, i_product, e_product, e_category, v_price, qty }
 
     function showAlert(message, type) {
         var html = '<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
@@ -315,7 +359,7 @@ $(function () {
     }
 
     function totalColumnCount() {
-        return getDownloadSettings().columns.length + 1;
+        return getDownloadSettings().columns.length + 2;
     }
 
     var COLUMN_TH_ATTRS = {
@@ -339,6 +383,7 @@ $(function () {
     function renderTableHead() {
         var $row = $('#tableHeadRow');
         $row.empty();
+        $row.append('<th style="width:36px;"><input type="checkbox" class="form-check-input" id="checkAllProducts" title="Pilih semua"></th>');
         visibleColumnKeys().forEach(function (key) {
             var col = DOWNLOAD_COLUMNS.filter(function (c) { return c.key === key; })[0];
             $row.append('<th' + (COLUMN_TH_ATTRS[key] || '') + '>' + col.label + '</th>');
@@ -411,7 +456,7 @@ $(function () {
         if (currentPage < 1) currentPage = 1;
 
         if (totalRows === 0) {
-            $body.append('<tr><td colspan="' + (visibleCols.length + 1) + '" class="text-center text-muted py-4">Data produk tidak ditemukan.</td></tr>');
+            $body.append('<tr><td colspan="' + (visibleCols.length + 2) + '" class="text-center text-muted py-4">Data produk tidak ditemukan.</td></tr>');
             $('#paginationControls').empty();
             $('#paginationInfo').text('');
             return;
@@ -424,6 +469,12 @@ $(function () {
             var isActive = (row.f_active === 't');
             var tr = $('<tr>');
             if (!isActive) tr.addClass('row-deactivated');
+
+            if (isActive) {
+                tr.append('<td><input type="checkbox" class="form-check-input product-select" data-id="' + row.id_product + '"' + (cart[row.id_product] ? ' checked' : '') + '></td>');
+            } else {
+                tr.append('<td></td>');
+            }
 
             visibleCols.forEach(function (key) {
                 tr.append(cellHtml(key, row, idx, start));
@@ -476,6 +527,164 @@ $(function () {
 
         $pg.append(pageItem('Next', currentPage + 1, currentPage === totalPages, false));
     }
+
+    // ---- Barang yang mau dibeli konsumer (cart) ----
+    // Cart rows are always built from allRows (the Product Datas), keyed by id_product,
+    // so name/kode/kategori/harga in the cart stay in sync with the product master data.
+
+    function cartCount() {
+        return Object.keys(cart).length;
+    }
+
+    function renderCart() {
+        var $body = $('#cartTableBody');
+        $body.empty();
+
+        var ids = Object.keys(cart);
+
+        if (ids.length === 0) {
+            $body.append('<tr id="cartEmptyRow"><td colspan="8" class="text-center text-muted py-4">Belum ada barang yang dipilih untuk dibeli.</td></tr>');
+            $('#cartTotalRow').addClass('d-none');
+            return;
+        }
+
+        var grandTotal = 0;
+
+        ids.forEach(function (id, idx) {
+            var item = cart[id];
+            // Re-sync against the current product master data, in case price/name/stock changed.
+            var product = allRows.filter(function (r) { return String(r.id_product) === String(id); })[0];
+            if (product) {
+                item.i_product  = product.i_product;
+                item.e_product  = product.e_product;
+                item.e_category = product.e_category;
+                item.v_price    = product.v_price;
+                item.n_stock    = Number(product.n_stock || 0);
+            }
+
+            var maxQty = Math.max(item.n_stock, 0);
+            if (item.qty > maxQty) item.qty = maxQty;
+            if (item.qty < 1 && maxQty >= 1) item.qty = 1;
+
+            var subtotal = item.v_price * item.qty;
+            grandTotal += subtotal;
+
+            var tr = $('<tr>');
+            tr.append('<td>' + (idx + 1) + '</td>');
+            tr.append('<td>' + escapeHtml(item.i_product) + '</td>');
+            tr.append('<td>' + escapeHtml(item.e_product) + '</td>');
+            tr.append('<td>' + escapeHtml(item.e_category || '-') + '</td>');
+            tr.append('<td class="text-end">' + formatRupiah(item.v_price) + '</td>');
+            tr.append(
+                '<td class="text-end">' +
+                    '<input type="number" min="1" step="1" max="' + maxQty + '" class="form-control form-control-sm cart-qty text-end" data-id="' + id + '" value="' + item.qty + '">' +
+                    '<div class="form-text text-muted" style="font-size:.72rem;">Stock: ' + maxQty + '</div>' +
+                '</td>'
+            );
+            tr.append('<td class="text-end">' + formatRupiah(subtotal) + '</td>');
+            tr.append(
+                '<td>' +
+                    '<button type="button" class="btn btn-sm btn-outline-danger btn-cart-remove" data-id="' + id + '"><i class="bi bi-x-lg"></i></button>' +
+                '</td>'
+            );
+            $body.append(tr);
+        });
+
+        $('#cartGrandTotal').text(formatRupiah(grandTotal));
+        $('#cartTotalRow').removeClass('d-none');
+    }
+
+    function addSelectedToCart() {
+        var $checked = $('.product-select:checked');
+        if ($checked.length === 0) {
+            showAlert('Pilih minimal satu produk untuk ditambahkan ke daftar beli.', 'warning');
+            return;
+        }
+
+        var blockedOutOfStock = [];
+        var blockedMaxed = [];
+
+        $checked.each(function () {
+            var id = $(this).data('id');
+            var product = allRows.filter(function (r) { return String(r.id_product) === String(id); })[0];
+            if (!product) return;
+
+            var stock = Number(product.n_stock || 0);
+
+            if (stock <= 0) {
+                blockedOutOfStock.push(product.e_product);
+                return;
+            }
+
+            if (cart[id]) {
+                if (cart[id].qty >= stock) {
+                    blockedMaxed.push(product.e_product);
+                    return;
+                }
+                cart[id].qty += 1;
+            } else {
+                cart[id] = {
+                    id_product:  product.id_product,
+                    i_product:   product.i_product,
+                    e_product:   product.e_product,
+                    e_category:  product.e_category,
+                    v_price:     product.v_price,
+                    n_stock:     stock,
+                    qty:         1
+                };
+            }
+        });
+
+        $checked.prop('checked', false);
+        $('#checkAllProducts').prop('checked', false);
+        renderCart();
+
+        if (blockedOutOfStock.length || blockedMaxed.length) {
+            var msgParts = [];
+            if (blockedOutOfStock.length) msgParts.push('Stok habis: ' + blockedOutOfStock.join(', '));
+            if (blockedMaxed.length) msgParts.push('Sudah mencapai batas stok: ' + blockedMaxed.join(', '));
+            showAlert(msgParts.join('. ') + '.', 'warning');
+        } else {
+            showAlert('Barang berhasil ditambahkan ke daftar beli konsumer.', 'success');
+        }
+    }
+
+    $('#btnAddToCart').on('click', addSelectedToCart);
+
+    $('#productTableBody').on('change', '#checkAllProducts', function () {
+        var checked = $(this).is(':checked');
+        $('.product-select').prop('checked', checked);
+    });
+
+    $('#tableHeadRow').on('change', '#checkAllProducts', function () {
+        var checked = $(this).is(':checked');
+        $('.product-select').prop('checked', checked);
+    });
+
+    $('#cartTableBody').on('input change', '.cart-qty', function () {
+        var id = $(this).data('id');
+        if (!cart[id]) return;
+
+        var maxQty = Math.max(Number(cart[id].n_stock || 0), 0);
+        var qty = parseInt($(this).val(), 10);
+
+        if (isNaN(qty) || qty < 1) qty = 1;
+        if (qty > maxQty) {
+            qty = maxQty;
+            showAlert('Qty tidak boleh melebihi stock yang tersedia (' + maxQty + ').', 'warning');
+        }
+
+        cart[id].qty = qty;
+        renderCart();
+    });
+
+    $('#cartTableBody').on('click', '.btn-cart-remove', function () {
+        var id = $(this).data('id');
+        delete cart[id];
+        renderCart();
+        // Uncheck the corresponding row in Product Datas if still visible.
+        $('.product-select[data-id="' + id + '"]').prop('checked', false);
+    });
 
     $('#paginationControls').on('click', 'a.page-link', function (e) {
         e.preventDefault();
