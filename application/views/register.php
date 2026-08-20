@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - Master Product</title>
+<title>Sign Up - Master Product</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
@@ -34,42 +34,50 @@
         margin: 0 auto 1rem;
     }
     .btn-primary { background-color: #0d6efd; border: none; }
-    #loginAlert { display: none; }
+    #registerAlert { display: none; }
 </style>
 </head>
 <body>
 
 <div class="card login-card">
     <div class="card-body p-4 p-sm-5">
-        <div class="login-icon"><i class="bi bi-box-seam"></i></div>
-        <h4 class="text-center mb-1">Master Product</h4>
-        <p class="text-center text-muted mb-4">Silakan login untuk melanjutkan</p>
+        <div class="login-icon"><i class="bi bi-person-plus"></i></div>
+        <h4 class="text-center mb-1">Buat Akun</h4>
+        <p class="text-center text-muted mb-4">Akun baru otomatis dibuat sebagai user biasa (non-admin)</p>
 
-        <div id="loginAlert" class="alert alert-danger py-2"></div>
+        <div id="registerAlert" class="alert alert-danger py-2"></div>
 
-        <form id="loginForm" novalidate>
+        <form id="registerForm" novalidate>
             <div class="mb-3">
                 <label class="form-label">Username</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
                     <input type="text" class="form-control" id="username" name="username" autocomplete="username" required autofocus>
                 </div>
-                <div class="invalid-feedback">Username wajib diisi.</div>
+                <div class="invalid-feedback">Username wajib diisi (min. 3 karakter).</div>
             </div>
-            <div class="mb-4">
+            <div class="mb-3">
                 <label class="form-label">Password</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white"><i class="bi bi-lock"></i></span>
-                    <input type="password" class="form-control" id="password" name="password" autocomplete="current-password" required>
+                    <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" required>
                     <button type="button" class="btn btn-outline-secondary" id="btnTogglePassword"><i class="bi bi-eye"></i></button>
                 </div>
-                <div class="invalid-feedback">Password wajib diisi.</div>
+                <div class="invalid-feedback">Password wajib diisi (min. 6 karakter).</div>
             </div>
-            <button type="submit" class="btn btn-primary w-100" id="btnLogin">
-                <span class="spinner-border spinner-border-sm d-none me-1" id="loginSpinner"></span>Login
+            <div class="mb-4">
+                <label class="form-label">Konfirmasi Password</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white"><i class="bi bi-lock-fill"></i></span>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
+                </div>
+                <div class="invalid-feedback">Konfirmasi password tidak cocok.</div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100" id="btnRegister">
+                <span class="spinner-border spinner-border-sm d-none me-1" id="registerSpinner"></span>Sign Up
             </button>
             <p class="text-center text-muted mt-3 mb-0">
-                Belum punya akun? <a href="<?= site_url('auth/signup'); ?>">Sign Up</a>
+                Sudah punya akun? <a href="<?= site_url(); ?>">Login</a>
             </p>
         </form>
     </div>
@@ -79,7 +87,8 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 $(function () {
-    var LOGIN_URL = '<?= site_url('auth/login'); ?>';
+    var REGISTER_URL = '<?= site_url('auth/register'); ?>';
+    var LOGIN_URL     = '<?= site_url(); ?>';
 
     $('#btnTogglePassword').on('click', function () {
         var $pwd = $('#password');
@@ -89,44 +98,51 @@ $(function () {
     });
 
     function showError(message) {
-        $('#loginAlert').text(message).show();
+        $('#registerAlert').removeClass('alert-success').addClass('alert-danger').text(message).show();
     }
 
-    $('#loginForm').on('submit', function (e) {
+    function showSuccess(message) {
+        $('#registerAlert').removeClass('alert-danger').addClass('alert-success').text(message).show();
+    }
+
+    $('#registerForm').on('submit', function (e) {
         e.preventDefault();
 
-        $('#loginAlert').hide();
-        $('#loginForm .is-invalid').removeClass('is-invalid');
+        $('#registerAlert').hide();
+        $('#registerForm .is-invalid').removeClass('is-invalid');
 
         var username = $('#username').val().trim();
         var password = $('#password').val();
+        var confirm  = $('#confirm_password').val();
         var valid = true;
 
-        if (username === '') { $('#username').addClass('is-invalid'); valid = false; }
-        if (password === '') { $('#password').addClass('is-invalid'); valid = false; }
+        if (username.length < 3) { $('#username').addClass('is-invalid'); valid = false; }
+        if (password.length < 6) { $('#password').addClass('is-invalid'); valid = false; }
+        if (confirm !== password || confirm === '') { $('#confirm_password').addClass('is-invalid'); valid = false; }
         if (!valid) return;
 
-        $('#btnLogin').prop('disabled', true);
-        $('#loginSpinner').removeClass('d-none');
+        $('#btnRegister').prop('disabled', true);
+        $('#registerSpinner').removeClass('d-none');
 
         $.ajax({
-            url: LOGIN_URL,
+            url: REGISTER_URL,
             method: 'POST',
-            data: { username: username, password: password },
+            data: { username: username, password: password, confirm_password: confirm },
             dataType: 'json'
         }).done(function (res) {
             if (res.status) {
-                window.location.href = res.redirect;
+                showSuccess(res.message || 'Akun berhasil dibuat.');
+                setTimeout(function () { window.location.href = LOGIN_URL; }, 1200);
             } else {
-                showError(res.message || 'Login gagal.');
+                showError(res.message || 'Registrasi gagal.');
             }
         }).fail(function (xhr) {
             var msg = 'Terjadi kesalahan, silakan coba lagi.';
             if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
             showError(msg);
         }).always(function () {
-            $('#btnLogin').prop('disabled', false);
-            $('#loginSpinner').addClass('d-none');
+            $('#btnRegister').prop('disabled', false);
+            $('#registerSpinner').addClass('d-none');
         });
     });
 });

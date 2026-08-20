@@ -22,6 +22,73 @@ class Auth extends CI_Controller {
         $this->load->view('login');
     }
 
+    public function signup()
+    {
+        if ($this->session->userdata('logged_in') === TRUE) {
+            redirect(site_url('product'));
+            return;
+        }
+
+        $this->load->view('register');
+    }
+
+    public function register()
+    {
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+            return;
+        }
+
+        if ($this->session->userdata('logged_in') === TRUE) {
+            $this->_json(array('status' => true, 'redirect' => site_url('product')));
+            return;
+        }
+
+        $this->form_validation->set_rules('username', 'Username', 'required|trim|min_length[3]|max_length[50]|alpha_dash');
+        $this->form_validation->set_rules('password', 'Password', 'required|min_length[6]');
+        $this->form_validation->set_rules('confirm_password', 'Konfirmasi Password', 'required|matches[password]');
+
+        if (!$this->form_validation->run()) {
+            $this->_json(array(
+                'status'  => false,
+                'message' => strip_tags(validation_errors()),
+            ), 422);
+            return;
+        }
+
+        $username = trim($this->input->post('username'));
+        $password = (string) $this->input->post('password');
+
+        // "admin" is reserved: the rest of the app treats that exact username
+        // as the administrator, so nobody can self-register into that role.
+        if (strcasecmp($username, 'admin') === 0) {
+            $this->_json(array(
+                'status'  => false,
+                'message' => 'Username tersebut tidak dapat digunakan.',
+            ), 422);
+            return;
+        }
+
+        if ($this->User_model->username_exists($username)) {
+            $this->_json(array(
+                'status'  => false,
+                'message' => 'Username sudah digunakan.',
+            ), 422);
+            return;
+        }
+
+        // Every self-registered account is a regular (non-admin) user, and
+        // the password is always stored as a bcrypt hash, never in plain text.
+        $hashed = password_hash($password, PASSWORD_BCRYPT);
+
+        $this->User_model->create($username, $hashed);
+
+        $this->_json(array(
+            'status'  => true,
+            'message' => 'Akun berhasil dibuat. Silakan login.',
+        ));
+    }
+
     public function login()
     {
         if (!$this->input->is_ajax_request()) {

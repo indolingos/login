@@ -32,6 +32,23 @@ class Product extends MY_Controller {
             ->set_output(json_encode($payload));
     }
 
+    private function _is_admin()
+    {
+        return $this->username === 'admin';
+    }
+
+    private function _require_admin()
+    {
+        if (!$this->_is_admin()) {
+            $this->_json(array(
+                'status'  => false,
+                'message' => 'Anda tidak memiliki akses untuk mengelola produk.',
+            ), 403);
+            return false;
+        }
+        return true;
+    }
+
     private function _stock_status($stock)
     {
         $stock = (int) $stock;
@@ -45,6 +62,7 @@ class Product extends MY_Controller {
     {
         $data['categories'] = $this->Product_model->get_categories();
         $data['username']   = $this->username;
+        $data['is_admin']   = ($this->username === 'admin');
         $this->load->view('product_list', $data);
     }
 
@@ -89,6 +107,7 @@ class Product extends MY_Controller {
     public function save()
     {
         if (!$this->_require_ajax()) return;
+        if (!$this->_require_admin()) return;
 
         $id_product = trim((string) $this->input->post('id_product'));
         $is_edit    = ($id_product !== '');
@@ -167,6 +186,7 @@ class Product extends MY_Controller {
     public function delete($id)
     {
         if (!$this->_require_ajax()) return;
+        if (!$this->_require_admin()) return;
 
         $existing = $this->Product_model->get_by_id($id);
         if (!$existing) {
@@ -185,6 +205,7 @@ class Product extends MY_Controller {
     public function restore($id)
     {
         if (!$this->_require_ajax()) return;
+        if (!$this->_require_admin()) return;
 
         $existing = $this->Product_model->get_by_id($id);
         if (!$existing) {

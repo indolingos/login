@@ -28,4 +28,20 @@ class User_model extends CI_Model {
         $this->db->where('id_user', $user_id);
         return $this->db->update('mst_user', array('t_download_settings' => $json));
     }
+
+    public function username_exists($username)
+    {
+        $this->db->where('i_username', $username);
+        return $this->db->get('mst_user')->num_rows() > 0;
+    }
+
+    public function create($username, $hashed_password)
+    {
+        $data = array(
+            'i_username' => $username,
+            'c_password' => $hashed_password,
+            'f_active'   => 't',
+        );
+        return $this->db->insert('mst_user', $data);
+    }
 }
