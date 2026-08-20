@@ -1,14 +1,6 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-/**
- * Auth_Controller
- *
- * Any controller that requires a logged-in user should extend this
- * class instead of CI_Controller. If there is no valid (non-expired)
- * login session, the request is redirected to the login page
- * (index.php) before the target controller method ever runs.
- */
 class MY_Controller extends CI_Controller {
 
     protected $user_id;
@@ -22,7 +14,6 @@ class MY_Controller extends CI_Controller {
         $this->load->library('session');
 
         if ($this->session->userdata('logged_in') !== TRUE) {
-            // Not logged in (or session expired) -> send back to login page.
             if ($this->input->is_ajax_request()) {
                 $this->output
                     ->set_status_header(401)

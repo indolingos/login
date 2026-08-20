@@ -1,20 +1,8 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-/**
- * Cart_model
- *
- * Stores what each logged-in user wants to buy (trx_cart), so the
- * "barang yang mau dibeli konsumer" list survives a page refresh and
- * can be reviewed later from the admin dashboard.
- */
 class Cart_model extends CI_Model {
 
-    /**
-     * Get the cart items belonging to a single user, joined with the
-     * current product data (name, price, stock, category) so the
-     * numbers shown are always accurate to Product Datas.
-     */
     public function get_by_user($id_user)
     {
         $this->db->select('trx_cart.id_cart, trx_cart.id_product, trx_cart.n_qty, trx_cart.dt_updated,
@@ -28,9 +16,6 @@ class Cart_model extends CI_Model {
         return $this->db->get()->result_array();
     }
 
-    /**
-     * All users' cart items at once, for the admin dashboard.
-     */
     public function get_all_grouped()
     {
         $this->db->select('trx_cart.id_cart, trx_cart.id_product, trx_cart.n_qty, trx_cart.dt_updated,
@@ -46,11 +31,6 @@ class Cart_model extends CI_Model {
         return $this->db->get()->result_array();
     }
 
-    /**
-     * Add or update the quantity of a product in a user's cart.
-     * One row per (user, product) — adding an already-present product
-     * just updates n_qty instead of duplicating the row.
-     */
     public function upsert($id_user, $id_product, $qty)
     {
         $this->db->where('id_user', $id_user);

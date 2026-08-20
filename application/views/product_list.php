@@ -38,9 +38,11 @@
             <i class="bi bi-box-seam me-2"></i>Master Product
         </span>
         <div class="d-flex align-items-center gap-3">
+            <?php if (!empty($is_admin)): ?>
             <a href="<?= site_url('cart'); ?>" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-cart-check me-1"></i>Dashboard Pembelian Konsumen
             </a>
+            <?php endif; ?>
             <span class="text-light small">
                 <i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($username ?: '-'); ?>
             </span>
@@ -78,10 +80,11 @@
                     <button type="button" class="btn btn-outline-primary" id="btnAddToCart">
                         <i class="bi bi-cart-plus me-1"></i>Tambah ke Daftar Beli
                     </button>
-                    <?php endif; ?>
+                    <?php else: ?>
                     <button type="button" class="btn btn-primary" id="btnAdd">
                         <i class="bi bi-plus-lg me-1"></i>Tambah Product
                     </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -100,12 +103,14 @@
                             <th class="text-end">Stock</th>
                             <th>Status</th>
                             <th class="text-center" style="width:70px;">Aktif</th>
+                            <?php if (!empty($is_admin)): ?>
                             <th style="width:130px;">Action</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody id="productTableBody">
                         <tr id="tableLoading">
-                            <td colspan="<?= empty($is_admin) ? 10 : 9; ?>" class="text-center py-4 text-muted">
+                            <td colspan="9" class="text-center py-4 text-muted">
                                 <div class="spinner-border spinner-border-sm me-2"></div>Memuat data...
                             </td>
                         </tr>
@@ -175,9 +180,7 @@
     <div class="card">
         <div class="card-body text-center py-5 text-muted">
             <i class="bi bi-shield-lock display-6 d-block mb-2"></i>
-            Sebagai admin, akun ini tidak membeli produk.<br>
-            Untuk melihat barang yang mau dibeli konsumen, buka
-            <a href="<?= site_url('cart'); ?>">Dashboard Pembelian Konsumen</a>.
+            <a href="<?= site_url('cart'); ?>">Buka Dashboard Pembelian Konsumen</a>
         </div>
     </div>
     <?php endif; ?>
@@ -284,7 +287,6 @@
     </div>
 </div>
 
-<!-- Download settings: just a column checklist + filename -->
 <div class="modal fade" id="downloadSettingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -379,7 +381,7 @@ $(function () {
     }
 
     function totalColumnCount() {
-        return getDownloadSettings().columns.length + (IS_ADMIN ? 1 : 2);
+        return getDownloadSettings().columns.length + 1;
     }
 
     var COLUMN_TH_ATTRS = {
@@ -410,7 +412,9 @@ $(function () {
             var col = DOWNLOAD_COLUMNS.filter(function (c) { return c.key === key; })[0];
             $row.append('<th' + (COLUMN_TH_ATTRS[key] || '') + '>' + col.label + '</th>');
         });
-        $row.append('<th style="width:130px;">Action</th>');
+        if (IS_ADMIN) {
+            $row.append('<th style="width:130px;">Action</th>');
+        }
     }
 
     function cellHtml(key, row, idx, start) {
@@ -478,7 +482,7 @@ $(function () {
         if (currentPage < 1) currentPage = 1;
 
         if (totalRows === 0) {
-            $body.append('<tr><td colspan="' + (visibleCols.length + (IS_ADMIN ? 1 : 2)) + '" class="text-center text-muted py-4">Data produk tidak ditemukan.</td></tr>');
+            $body.append('<tr><td colspan="' + totalColumnCount() + '" class="text-center text-muted py-4">Data produk tidak ditemukan.</td></tr>');
             $('#paginationControls').empty();
             $('#paginationInfo').text('');
             return;
@@ -504,19 +508,21 @@ $(function () {
                 tr.append(cellHtml(key, row, idx, start));
             });
 
-            if (isActive) {
-                tr.append(
-                    '<td>' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary btn-edit me-1" data-id="' + row.id_product + '"><i class="bi bi-pencil-square"></i></button>' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '"><i class="bi bi-trash"></i></button>' +
-                    '</td>'
-                );
-            } else {
-                tr.append(
-                    '<td>' +
-                        '<button type="button" class="btn btn-sm btn-outline-success btn-restore" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '" title="Restore Produk"><i class="bi bi-arrow-counterclockwise"></i></button>' +
-                    '</td>'
-                );
+            if (IS_ADMIN) {
+                if (isActive) {
+                    tr.append(
+                        '<td>' +
+                            '<button type="button" class="btn btn-sm btn-outline-primary btn-edit me-1" data-id="' + row.id_product + '"><i class="bi bi-pencil-square"></i></button>' +
+                            '<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '"><i class="bi bi-trash"></i></button>' +
+                        '</td>'
+                    );
+                } else {
+                    tr.append(
+                        '<td>' +
+                            '<button type="button" class="btn btn-sm btn-outline-success btn-restore" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '" title="Restore Produk"><i class="bi bi-arrow-counterclockwise"></i></button>' +
+                        '</td>'
+                    );
+                }
             }
 
             $body.append(tr);
@@ -551,12 +557,6 @@ $(function () {
 
         $pg.append(pageItem('Next', currentPage + 1, currentPage === totalPages, false));
     }
-
-    // ---- Barang yang mau dibeli konsumer (cart) ----
-    // Cart rows are always re-synced against allRows (the Product Datas), keyed by id_product,
-    // so name/kode/kategori/harga in the cart stay in sync with the product master data.
-    // Every change is also persisted to the server (trx_cart) so it survives a page refresh
-    // and shows up on the admin Dashboard Pembelian Konsumen.
 
     function loadMyCart() {
         $.ajax({
@@ -623,7 +623,6 @@ $(function () {
 
         ids.forEach(function (id, idx) {
             var item = cart[id];
-            // Re-sync against the current product master data, in case price/name/stock changed.
             var product = allRows.filter(function (r) { return String(r.id_product) === String(id); })[0];
             if (product) {
                 item.i_product  = product.i_product;
@@ -767,7 +766,6 @@ $(function () {
         delete cart[id];
         renderCart();
         removeCartItemFromServer(id);
-        // Uncheck the corresponding row in Product Datas if still visible.
         $('.product-select[data-id="' + id + '"]').prop('checked', false);
     });
 

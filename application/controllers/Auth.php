@@ -59,8 +59,6 @@ class Auth extends CI_Controller {
         $username = trim($this->input->post('username'));
         $password = (string) $this->input->post('password');
 
-        // "admin" is reserved: the rest of the app treats that exact username
-        // as the administrator, so nobody can self-register into that role.
         if (strcasecmp($username, 'admin') === 0) {
             $this->_json(array(
                 'status'  => false,
@@ -77,8 +75,6 @@ class Auth extends CI_Controller {
             return;
         }
 
-        // Every self-registered account is a regular (non-admin) user, and
-        // the password is always stored as a bcrypt hash, never in plain text.
         $hashed = password_hash($password, PASSWORD_BCRYPT);
 
         $this->User_model->create($username, $hashed);

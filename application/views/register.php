@@ -35,6 +35,8 @@
     }
     .btn-primary { background-color: #0d6efd; border: none; }
     #registerAlert { display: none; }
+    .invalid-feedback { display: none; }
+    .invalid-feedback.d-block { display: block; }
 </style>
 </head>
 <body>
@@ -43,7 +45,6 @@
     <div class="card-body p-4 p-sm-5">
         <div class="login-icon"><i class="bi bi-person-plus"></i></div>
         <h4 class="text-center mb-1">Buat Akun</h4>
-        <p class="text-center text-muted mb-4">Akun baru otomatis dibuat sebagai user biasa (non-admin)</p>
 
         <div id="registerAlert" class="alert alert-danger py-2"></div>
 
@@ -54,7 +55,7 @@
                     <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
                     <input type="text" class="form-control" id="username" name="username" autocomplete="username" required autofocus>
                 </div>
-                <div class="invalid-feedback">Username wajib diisi (min. 3 karakter).</div>
+                <div class="invalid-feedback" id="usernameFeedback">Username wajib diisi (min. 3 karakter).</div>
             </div>
             <div class="mb-3">
                 <label class="form-label">Password</label>
@@ -63,7 +64,7 @@
                     <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" required>
                     <button type="button" class="btn btn-outline-secondary" id="btnTogglePassword"><i class="bi bi-eye"></i></button>
                 </div>
-                <div class="invalid-feedback">Password wajib diisi (min. 6 karakter).</div>
+                <div class="invalid-feedback" id="passwordFeedback">Password wajib diisi (min. 6 karakter).</div>
             </div>
             <div class="mb-4">
                 <label class="form-label">Konfirmasi Password</label>
@@ -71,7 +72,7 @@
                     <span class="input-group-text bg-white"><i class="bi bi-lock-fill"></i></span>
                     <input type="password" class="form-control" id="confirm_password" name="confirm_password" autocomplete="new-password" required>
                 </div>
-                <div class="invalid-feedback">Konfirmasi password tidak cocok.</div>
+                <div class="invalid-feedback" id="confirmFeedback">Konfirmasi password tidak cocok.</div>
             </div>
             <button type="submit" class="btn btn-primary w-100" id="btnRegister">
                 <span class="spinner-border spinner-border-sm d-none me-1" id="registerSpinner"></span>Sign Up
@@ -110,16 +111,32 @@ $(function () {
 
         $('#registerAlert').hide();
         $('#registerForm .is-invalid').removeClass('is-invalid');
+        $('#registerForm .invalid-feedback').removeClass('d-block');
 
         var username = $('#username').val().trim();
         var password = $('#password').val();
         var confirm  = $('#confirm_password').val();
         var valid = true;
 
-        if (username.length < 3) { $('#username').addClass('is-invalid'); valid = false; }
-        if (password.length < 6) { $('#password').addClass('is-invalid'); valid = false; }
-        if (confirm !== password || confirm === '') { $('#confirm_password').addClass('is-invalid'); valid = false; }
-        if (!valid) return;
+        if (username.length < 3) {
+            $('#username').addClass('is-invalid');
+            $('#usernameFeedback').addClass('d-block');
+            valid = false;
+        }
+        if (password.length < 6) {
+            $('#password').addClass('is-invalid');
+            $('#passwordFeedback').addClass('d-block');
+            valid = false;
+        }
+        if (confirm !== password || confirm === '') {
+            $('#confirm_password').addClass('is-invalid');
+            $('#confirmFeedback').addClass('d-block');
+            valid = false;
+        }
+        if (!valid) {
+            showError('Periksa kembali data yang diisi.');
+            return;
+        }
 
         $('#btnRegister').prop('disabled', true);
         $('#registerSpinner').removeClass('d-none');

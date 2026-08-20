@@ -110,7 +110,7 @@ $(function () {
         if (!str) return '-';
         var d = new Date(str.replace(' ', 'T'));
         if (isNaN(d.getTime())) return str;
-        return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
     }
 
     function loadDashboard() {
@@ -154,15 +154,37 @@ $(function () {
         var grandTotal = 0;
         var userSet = {};
         var lastUser = null;
+        var pendingGroupRows = [];
+        var userSubtotal = 0;
+        var userLabel = '';
+
+        function flushUserGroup() {
+            if (pendingGroupRows.length === 0) return;
+            pendingGroupRows.forEach(function (tr) { $body.append(tr); });
+            var totalTr = $('<tr class="table-light">');
+            totalTr.append('<td colspan="7" class="text-end fw-semibold">Subtotal untuk ' + escapeHtml(userLabel) + '</td>');
+            totalTr.append('<td class="text-end fw-semibold">' + formatRupiah(userSubtotal) + '</td>');
+            totalTr.append('<td></td>');
+            $body.append(totalTr);
+            pendingGroupRows = [];
+            userSubtotal = 0;
+        }
 
         rows.forEach(function (row, idx) {
             userSet[row.id_user] = true;
             var subtotal = row.v_price * row.n_qty;
             grandTotal += subtotal;
 
-            var tr = $('<tr>');
-            if (row.id_user !== lastUser) tr.addClass('user-group-start');
+            var isNewGroup = (row.id_user !== lastUser);
+            if (isNewGroup) {
+                flushUserGroup();
+                userLabel = row.i_username;
+            }
             lastUser = row.id_user;
+            userSubtotal += subtotal;
+
+            var tr = $('<tr>');
+            if (isNewGroup) tr.addClass('user-group-start');
 
             tr.append('<td>' + (idx + 1) + '</td>');
             tr.append('<td><span class="badge badge-user"><i class="bi bi-person-fill me-1"></i>' + escapeHtml(row.i_username) + '</span></td>');
@@ -174,8 +196,9 @@ $(function () {
             tr.append('<td class="text-end">' + formatRupiah(subtotal) + '</td>');
             tr.append('<td>' + formatDate(row.dt_updated) + '</td>');
 
-            $body.append(tr);
+            pendingGroupRows.push(tr);
         });
+        flushUserGroup();
 
         var userCount = Object.keys(userSet).length;
         $('#summaryInfo').text(userCount + ' konsumen, ' + rows.length + ' baris barang, total ' + formatRupiah(grandTotal) + '.');

@@ -34,11 +34,26 @@ class Cart extends MY_Controller {
         return $this->username === 'admin';
     }
 
-    /**
-     * Admin dashboard: shows what every logged-in user wants to buy.
-     */
+    private function _require_admin()
+    {
+        if (!$this->_is_admin()) {
+            if ($this->input->is_ajax_request()) {
+                $this->_json(array(
+                    'status'  => false,
+                    'message' => 'Anda tidak memiliki akses ke halaman ini.',
+                ), 403);
+            } else {
+                redirect(site_url('product'));
+            }
+            return false;
+        }
+        return true;
+    }
+
     public function index()
     {
+        if (!$this->_require_admin()) return;
+
         $data['username'] = $this->username;
         $this->load->view('cart_dashboard', $data);
     }
@@ -46,6 +61,7 @@ class Cart extends MY_Controller {
     public function dashboard_data()
     {
         if (!$this->_require_ajax()) return;
+        if (!$this->_require_admin()) return;
 
         $rows = $this->Cart_model->get_all_grouped();
 
@@ -67,10 +83,6 @@ class Cart extends MY_Controller {
         $this->_json(array('status' => true, 'data' => $out));
     }
 
-    /**
-     * Current user's own saved cart (used to restore the "barang yang
-     * mau dibeli konsumer" table on the product page after a refresh).
-     */
     public function my_list()
     {
         if (!$this->_require_ajax()) return;
