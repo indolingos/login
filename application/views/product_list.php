@@ -234,12 +234,23 @@
                 </div>
                 <div class="modal-body">
 
-                    <label class="form-label">Kolom yang mau di-download</label>
                     <div class="d-flex justify-content-between mb-2">
                         <button type="button" class="btn btn-link btn-sm p-0" id="btnSelectAllCols">Pilih Semua</button>
                         <button type="button" class="btn btn-link btn-sm p-0" id="btnClearAllCols">Hapus Semua</button>
                     </div>
                     <div id="downloadColumnList" class="row row-cols-2 g-2 mb-3"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Format File</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="dl_format" id="fmtCsv" value="csv">
+                            <label class="form-check-label" for="fmtCsv">CSV</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="dl_format" id="fmtExcel" value="excel">
+                            <label class="form-check-label" for="fmtExcel">Excel (.xlsx)</label>
+                        </div>
+                    </div>
 
                     <div class="mb-1">
                         <label class="form-label">Nama File</label>
@@ -261,6 +272,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 $(function () {
 
@@ -621,8 +633,9 @@ $(function () {
     });
 
     // ===================== DOWNLOAD FEATURE =====================
-
-    var DOWNLOAD_SETTINGS_KEY = 'productDownloadSettings';
+    // Settings are saved server-side per logged-in user (see
+    // get_download_settings / save_download_settings in Product.php),
+    // so each account keeps its own preferences across browsers/devices.
 
     var DOWNLOAD_COLUMNS = [
         { key: 'no',         label: 'No' },
@@ -635,38 +648,57 @@ $(function () {
         { key: 'f_active',   label: 'Aktif' }
     ];
 
-    var DEFAULT_DOWNLOAD_SETTINGS = {
-        filenamePrefix: 'products',
-        columns: DOWNLOAD_COLUMNS.map(function (c) { return c.key; })
-    };
+    function defaultDownloadSettings() {
+        return {
+            filenamePrefix: 'products',
+            columns: DOWNLOAD_COLUMNS.map(function (c) { return c.key; }),
+            format: 'csv'
+        };
+    }
 
-    var downloadSettingsModal = new bootstrap.Modal(document.getElementById('downloadSettingsModal'));
+    // Builds a full settings object field-by-field instead of deep-merging
+    // with $.extend(true, ...): that previously merged the `columns` arrays
+    // by index rather than replacing them, so a shorter saved array (after
+    // unchecking columns) silently inherited leftover items from the
+    // defaults array's tail — which is why unchecked columns like Stock/Aktif
+    // kept coming back checked.
+    function normalizeDownloadSettings(raw) {
+        var d = defaultDownloadSettings();
+        if (!raw || typeof raw !== 'object') return d;
+        return {
+            filenamePrefix: (typeof raw.filenamePrefix === 'string' && raw.filenamePrefix.trim() !== '') ? raw.filenamePrefix : d.filenamePrefix,
+            columns: (Array.isArray(raw.columns) && raw.columns.length > 0) ? raw.columns.slice() : d.columns,
+            format: (raw.format === 'csv' || raw.format === 'excel') ? raw.format : d.format
+        };
+    }
+
+    var downloadSettingsCache = null; // populated from the server; null = not loaded yet (use defaults)
 
     function getDownloadSettings() {
-        try {
-            var raw = localStorage.getItem(DOWNLOAD_SETTINGS_KEY);
-            if (!raw) return $.extend(true, {}, DEFAULT_DOWNLOAD_SETTINGS);
-            var parsed = JSON.parse(raw);
-            var merged = $.extend(true, {}, DEFAULT_DOWNLOAD_SETTINGS, parsed);
-            if (!Array.isArray(merged.columns) || merged.columns.length === 0) {
-                merged.columns = DEFAULT_DOWNLOAD_SETTINGS.columns.slice();
-            }
-            return merged;
-        } catch (e) {
-            return $.extend(true, {}, DEFAULT_DOWNLOAD_SETTINGS);
-        }
+        return normalizeDownloadSettings(downloadSettingsCache);
     }
 
-    function saveDownloadSettings(settings) {
-        try {
-            localStorage.setItem(DOWNLOAD_SETTINGS_KEY, JSON.stringify(settings));
-        } catch (e) { /* localStorage unavailable, ignore */ }
+    function fetchDownloadSettings(callback) {
+        $.ajax({
+            url: BASE_URL + 'get_download_settings',
+            method: 'GET',
+            dataType: 'json'
+        }).done(function (res) {
+            downloadSettingsCache = (res && res.status) ? res.data : null;
+        }).fail(function () {
+            downloadSettingsCache = null;
+        }).always(function () {
+            if (callback) callback();
+        });
     }
+
+    var downloadSettingsModal = new bootstrap.Modal(document.getElementById('downloadSettingsModal'));
 
     function populateSettingsModal() {
         var s = getDownloadSettings();
 
         $('#settingFilename').val(s.filenamePrefix);
+        $('input[name="dl_format"][value="' + s.format + '"]').prop('checked', true);
 
         var $list = $('#downloadColumnList');
         $list.empty();
@@ -685,8 +717,10 @@ $(function () {
     }
 
     $('#btnDownloadSettings').on('click', function () {
-        populateSettingsModal();
-        downloadSettingsModal.show();
+        fetchDownloadSettings(function () {
+            populateSettingsModal();
+            downloadSettingsModal.show();
+        });
     });
 
     $('#btnSelectAllCols').on('click', function () {
@@ -708,11 +742,38 @@ $(function () {
 
         var settings = {
             filenamePrefix: ($('#settingFilename').val() || 'products').trim(),
-            columns: checkedCols
+            columns: checkedCols,
+            format: $('input[name="dl_format"]:checked').val() || 'csv'
         };
-        saveDownloadSettings(settings);
-        downloadSettingsModal.hide();
-        showAlert('Pengaturan download berhasil disimpan.', 'success');
+
+        var $submitBtn = $(this).find('button[type="submit"]');
+        $submitBtn.prop('disabled', true);
+
+        $.ajax({
+            url: BASE_URL + 'save_download_settings',
+            method: 'POST',
+            data: {
+                'columns[]':      settings.columns,
+                format:           settings.format,
+                filenamePrefix:   settings.filenamePrefix
+            },
+            traditional: true,
+            dataType: 'json'
+        }).done(function (res) {
+            if (res.status) {
+                downloadSettingsCache = settings;
+                downloadSettingsModal.hide();
+                showAlert(res.message || 'Pengaturan download berhasil disimpan.', 'success');
+            } else {
+                showAlert(res.message || 'Gagal menyimpan pengaturan.', 'danger');
+            }
+        }).fail(function (xhr) {
+            var msg = 'Gagal menyimpan pengaturan.';
+            if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
+            showAlert(msg, 'danger');
+        }).always(function () {
+            $submitBtn.prop('disabled', false);
+        });
     });
 
     function csvEscape(value) {
@@ -722,14 +783,27 @@ $(function () {
         return needsQuote ? '"' + value + '"' : value;
     }
 
-    function formatCellValue(row, key, index) {
+    // Raw value for a cell (used by both CSV and Excel export).
+    function rawCellValue(row, key, index) {
         switch (key) {
             case 'no':       return index + 1;
             case 'v_price':  return Number(row.v_price || 0);
-            case 'n_stock':  return row.n_stock;
+            case 'n_stock':  return Number(row.n_stock || 0);
             case 'f_active': return (row.f_active === 't') ? 'Aktif' : 'Deactivated';
             default:         return row[key] != null ? row[key] : '';
         }
+    }
+
+    // CSV has no cell type info, so spreadsheet apps guess the type from the
+    // text and switch large plain numbers to scientific notation (e.g. Harga
+    // showing as "3.365E+09"). Wrapping numeric cells as ="123" forces the
+    // app to treat them as text and display the full number.
+    function csvCellValue(row, key, index) {
+        var value = rawCellValue(row, key, index);
+        if (key === 'v_price' || key === 'n_stock') {
+            return '="' + value + '"';
+        }
+        return value;
     }
 
     function triggerBlobDownload(blob, filename) {
@@ -741,6 +815,50 @@ $(function () {
         a.click();
         document.body.removeChild(a);
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function downloadCsv(rows, cols, filenamePrefix) {
+        var lines = [];
+        lines.push(cols.map(function (c) { return csvEscape(c.label); }).join(','));
+
+        rows.forEach(function (row, index) {
+            var line = cols.map(function (c) {
+                return csvEscape(csvCellValue(row, c.key, index));
+            }).join(',');
+            lines.push(line);
+        });
+
+        var csvContent = '\uFEFF' + lines.join('\r\n');
+        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        triggerBlobDownload(blob, filenamePrefix + '.csv');
+    }
+
+    function downloadExcel(rows, cols, filenamePrefix) {
+        var aoa = [cols.map(function (c) { return c.label; })];
+        rows.forEach(function (row, index) {
+            aoa.push(cols.map(function (c) { return rawCellValue(row, c.key, index); }));
+        });
+
+        var ws = XLSX.utils.aoa_to_sheet(aoa);
+
+        // Give numeric columns a real number format so Excel never falls
+        // back to scientific notation, and keep the currency column readable.
+        cols.forEach(function (c, colIdx) {
+            if (c.key !== 'v_price' && c.key !== 'n_stock') return;
+            var fmt = (c.key === 'v_price') ? '#,##0' : '0';
+            for (var r = 1; r <= rows.length; r++) {
+                var cellRef = XLSX.utils.encode_cell({ r: r, c: colIdx });
+                if (ws[cellRef]) ws[cellRef].z = fmt;
+            }
+        });
+
+        ws['!cols'] = cols.map(function (c) {
+            return { wch: (c.key === 'e_product' || c.key === 'v_price') ? 22 : 14 };
+        });
+
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Products');
+        XLSX.writeFile(wb, filenamePrefix + '.xlsx');
     }
 
     $('#btnDownload').on('click', function () {
@@ -758,25 +876,18 @@ $(function () {
             return;
         }
 
-        var lines = [];
-        lines.push(cols.map(function (c) { return csvEscape(c.label); }).join(','));
-
-        rows.forEach(function (row, index) {
-            var line = cols.map(function (c) {
-                return csvEscape(formatCellValue(row, c.key, index));
-            }).join(',');
-            lines.push(line);
-        });
-
-        var csvContent = '\uFEFF' + lines.join('\r\n');
-        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        triggerBlobDownload(blob, settings.filenamePrefix + '.csv');
+        if (settings.format === 'excel') {
+            downloadExcel(rows, cols, settings.filenamePrefix);
+        } else {
+            downloadCsv(rows, cols, settings.filenamePrefix);
+        }
 
         showAlert('Download dimulai (' + rows.length + ' baris).', 'success');
     });
 
     // ===================== END DOWNLOAD FEATURE =====================
 
+    fetchDownloadSettings();
     loadProducts('');
 });
 </script>

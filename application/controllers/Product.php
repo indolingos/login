@@ -3,11 +3,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Product extends MY_Controller {
 
+    // Allow-list for download columns, also used to sanitize what's saved server-side.
+    private $_download_columns = array('no', 'i_product', 'e_product', 'e_category', 'v_price', 'n_stock', 'status', 'f_active');
+
     public function __construct()
     {
         parent::__construct();
         $this->load->database();
         $this->load->model('Product_model');
+        $this->load->model('User_model');
         $this->load->helper('url');
         $this->load->library('form_validation');
     }
@@ -213,5 +217,57 @@ class Product extends MY_Controller {
         }
 
         $this->_json(array('exists' => $exists, 'is_active' => $is_active));
+    }
+
+    // Product download preferences (columns / format / filename) are saved
+    // per logged-in user, not per browser, so each account keeps its own.
+    public function get_download_settings()
+    {
+        if (!$this->_require_ajax()) return;
+
+        $raw     = $this->User_model->get_download_settings($this->user_id);
+        $decoded = null;
+
+        if ($raw) {
+            $tmp = json_decode($raw, true);
+            if (is_array($tmp)) $decoded = $tmp;
+        }
+
+        $this->_json(array('status' => true, 'data' => $decoded));
+    }
+
+    public function save_download_settings()
+    {
+        if (!$this->_require_ajax()) return;
+
+        $columns = $this->input->post('columns');
+        $format  = trim((string) $this->input->post('format'));
+        $prefix  = trim((string) $this->input->post('filenamePrefix'));
+
+        if (!is_array($columns)) {
+            $columns = array();
+        }
+        $columns = array_values(array_intersect($this->_download_columns, $columns));
+
+        if (empty($columns)) {
+            $this->_json(array('status' => false, 'message' => 'Pilih minimal satu kolom.'), 422);
+            return;
+        }
+
+        if ($format !== 'csv' && $format !== 'excel') {
+            $format = 'csv';
+        }
+        if ($prefix === '') {
+            $prefix = 'products';
+        }
+
+        $settings = array(
+            'columns'        => $columns,
+            'format'         => $format,
+            'filenamePrefix' => $prefix,
+        );
+
+        $this->User_model->save_download_settings($this->user_id, json_encode($settings));
+        $this->_json(array('status' => true, 'message' => 'Pengaturan download berhasil disimpan.'));
     }
 }

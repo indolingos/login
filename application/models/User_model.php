@@ -14,4 +14,18 @@ class User_model extends CI_Model {
         $this->db->where('id_user', $id);
         return $this->db->get('mst_user')->row_array();
     }
+
+    public function get_download_settings($user_id)
+    {
+        $this->db->select('t_download_settings');
+        $this->db->where('id_user', $user_id);
+        $row = $this->db->get('mst_user')->row_array();
+        return $row ? $row['t_download_settings'] : null;
+    }
+
+    public function save_download_settings($user_id, $json)
+    {
+        $this->db->where('id_user', $user_id);
+        return $this->db->update('mst_user', array('t_download_settings' => $json));
+    }
 }
