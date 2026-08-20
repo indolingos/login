@@ -223,7 +223,6 @@
     </div>
 </div>
 
-<!-- Download settings: just a column checklist + filename -->
 <div class="modal fade" id="downloadSettingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -632,11 +631,6 @@ $(function () {
         });
     });
 
-    // ===================== DOWNLOAD FEATURE =====================
-    // Settings are saved server-side per logged-in user (see
-    // get_download_settings / save_download_settings in Product.php),
-    // so each account keeps its own preferences across browsers/devices.
-
     var DOWNLOAD_COLUMNS = [
         { key: 'no',         label: 'No' },
         { key: 'i_product',  label: 'Kode' },
@@ -656,12 +650,6 @@ $(function () {
         };
     }
 
-    // Builds a full settings object field-by-field instead of deep-merging
-    // with $.extend(true, ...): that previously merged the `columns` arrays
-    // by index rather than replacing them, so a shorter saved array (after
-    // unchecking columns) silently inherited leftover items from the
-    // defaults array's tail — which is why unchecked columns like Stock/Aktif
-    // kept coming back checked.
     function normalizeDownloadSettings(raw) {
         var d = defaultDownloadSettings();
         if (!raw || typeof raw !== 'object') return d;
@@ -672,7 +660,7 @@ $(function () {
         };
     }
 
-    var downloadSettingsCache = null; // populated from the server; null = not loaded yet (use defaults)
+    var downloadSettingsCache = null;
 
     function getDownloadSettings() {
         return normalizeDownloadSettings(downloadSettingsCache);
@@ -783,7 +771,6 @@ $(function () {
         return needsQuote ? '"' + value + '"' : value;
     }
 
-    // Raw value for a cell (used by both CSV and Excel export).
     function rawCellValue(row, key, index) {
         switch (key) {
             case 'no':       return index + 1;
@@ -794,10 +781,7 @@ $(function () {
         }
     }
 
-    // CSV has no cell type info, so spreadsheet apps guess the type from the
-    // text and switch large plain numbers to scientific notation (e.g. Harga
-    // showing as "3.365E+09"). Wrapping numeric cells as ="123" forces the
-    // app to treat them as text and display the full number.
+
     function csvCellValue(row, key, index) {
         var value = rawCellValue(row, key, index);
         if (key === 'v_price' || key === 'n_stock') {
@@ -841,8 +825,7 @@ $(function () {
 
         var ws = XLSX.utils.aoa_to_sheet(aoa);
 
-        // Give numeric columns a real number format so Excel never falls
-        // back to scientific notation, and keep the currency column readable.
+  
         cols.forEach(function (c, colIdx) {
             if (c.key !== 'v_price' && c.key !== 'n_stock') return;
             var fmt = (c.key === 'v_price') ? '#,##0' : '0';
@@ -885,7 +868,6 @@ $(function () {
         showAlert('Download dimulai (' + rows.length + ' baris).', 'success');
     });
 
-    // ===================== END DOWNLOAD FEATURE =====================
 
     fetchDownloadSettings();
     loadProducts('');

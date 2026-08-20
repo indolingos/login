@@ -12,10 +12,6 @@ class Auth extends CI_Controller {
         $this->load->helper('url');
     }
 
-    /**
-     * GET /  or  GET index.php/auth
-     * Shows the login page, unless already logged in -> straight to product list.
-     */
     public function index()
     {
         if ($this->session->userdata('logged_in') === TRUE) {
@@ -26,9 +22,6 @@ class Auth extends CI_Controller {
         $this->load->view('login');
     }
 
-    /**
-     * POST index.php/auth/login (AJAX)
-     */
     public function login()
     {
         if (!$this->input->is_ajax_request()) {
@@ -36,7 +29,6 @@ class Auth extends CI_Controller {
             return;
         }
 
-        // Already logged in, nothing to do.
         if ($this->session->userdata('logged_in') === TRUE) {
             $this->_json(array('status' => true, 'redirect' => site_url('product')));
             return;
@@ -69,7 +61,6 @@ class Auth extends CI_Controller {
             return;
         }
 
-        // Prevent session fixation: swap the session id, keep the data.
         $this->session->sess_regenerate(TRUE);
 
         $this->session->set_userdata(array(
@@ -86,9 +77,7 @@ class Auth extends CI_Controller {
         ));
     }
 
-    /**
-     * GET/POST index.php/auth/logout
-     */
+   
     public function logout()
     {
         $this->session->sess_destroy();

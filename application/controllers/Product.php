@@ -3,7 +3,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Product extends MY_Controller {
 
-    // Allow-list for download columns, also used to sanitize what's saved server-side.
     private $_download_columns = array('no', 'i_product', 'e_product', 'e_category', 'v_price', 'n_stock', 'status', 'f_active');
 
     public function __construct()
@@ -219,8 +218,6 @@ class Product extends MY_Controller {
         $this->_json(array('exists' => $exists, 'is_active' => $is_active));
     }
 
-    // Product download preferences (columns / format / filename) are saved
-    // per logged-in user, not per browser, so each account keeps its own.
     public function get_download_settings()
     {
         if (!$this->_require_ajax()) return;

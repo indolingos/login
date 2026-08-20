@@ -5,9 +5,6 @@ class Product_model extends CI_Model {
 
     public function get_all($search = null, $include_inactive = false)
     {
-        // DISTINCT guards against duplicate rows appearing if mst_category
-        // ever has more than one row sharing the same id_category (a LEFT JOIN
-        // multiplies rows whenever the join key isn't unique on the joined side).
         $this->db->distinct();
         $this->db->select('mst_product.*, mst_category.e_category');
         $this->db->from('mst_product');
