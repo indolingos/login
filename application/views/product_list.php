@@ -37,6 +37,14 @@
         <span class="navbar-brand mb-0">
             <i class="bi bi-box-seam me-2"></i>Master Product
         </span>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-light small">
+                <i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($username ?: '-'); ?>
+            </span>
+            <a href="<?= site_url('auth/logout'); ?>" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-box-arrow-right me-1"></i>Logout
+            </a>
+        </div>
     </div>
 </nav>
 
@@ -52,9 +60,19 @@
                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
                     <input type="text" id="searchInput" class="form-control" placeholder="Cari kode atau nama produk...">
                 </div>
-                <button type="button" class="btn btn-primary" id="btnAdd">
-                    <i class="bi bi-plus-lg me-1"></i>Tambah Product
-                </button>
+                <div class="d-flex gap-2">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-success" id="btnDownload" title="Download data">
+                            <i class="bi bi-download me-1"></i>Download
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnDownloadSettings" title="Pengaturan download">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="btnAdd">
+                        <i class="bi bi-plus-lg me-1"></i>Tambah Product
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive">
@@ -201,6 +219,94 @@
                     <span class="spinner-border spinner-border-sm d-none me-1" id="restoreSpinner"></span>Restore
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Choose columns to download -->
+<div class="modal fade" id="downloadColumnsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-download me-2"></i>Download Data Produk</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-2">Pilih kolom yang ingin disertakan dalam file download:</p>
+                <div class="d-flex justify-content-between mb-2">
+                    <button type="button" class="btn btn-link btn-sm p-0" id="btnSelectAllCols">Pilih Semua</button>
+                    <button type="button" class="btn btn-link btn-sm p-0" id="btnClearAllCols">Hapus Semua</button>
+                </div>
+                <div id="downloadColumnList" class="row row-cols-2 g-2 mb-3"></div>
+
+                <div class="alert alert-secondary small py-2 mb-0" id="downloadScopeInfo"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-success" id="btnConfirmDownload">
+                    <i class="bi bi-download me-1"></i>Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Download settings -->
+<div class="modal fade" id="downloadSettingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="downloadSettingsForm">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Pengaturan Download</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">Format File</label>
+                        <select class="form-select" id="settingFormat">
+                            <option value="csv">CSV (.csv)</option>
+                            <option value="excel">Excel (.xls)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="delimiterWrap">
+                        <label class="form-label">Pemisah Kolom (CSV)</label>
+                        <select class="form-select" id="settingDelimiter">
+                            <option value=",">Koma ( , )</option>
+                            <option value=";">Titik koma ( ; )</option>
+                            <option value="\t">Tab</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Data yang di-download</label>
+                        <select class="form-select" id="settingScope">
+                            <option value="filtered">Semua hasil pencarian saat ini</option>
+                            <option value="page">Hanya baris di halaman saat ini</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nama File (prefix)</label>
+                        <input type="text" class="form-control" id="settingFilename" placeholder="products">
+                    </div>
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="settingIncludeInactive">
+                        <label class="form-check-label" for="settingIncludeInactive">
+                            Sertakan produk yang dinonaktifkan (Deactivated)
+                        </label>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Simpan Pengaturan
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -565,6 +671,252 @@ $(function () {
             restoreTargetId = null;
         });
     });
+
+    // ===================== DOWNLOAD FEATURE =====================
+
+    var DOWNLOAD_SETTINGS_KEY = 'productDownloadSettings';
+    var DOWNLOAD_COLUMNS_KEY  = 'productDownloadColumns';
+
+    var DOWNLOAD_COLUMNS = [
+        { key: 'i_product',  label: 'Kode Produk' },
+        { key: 'e_product',  label: 'Nama Produk' },
+        { key: 'e_category', label: 'Kategori' },
+        { key: 'v_price',    label: 'Harga' },
+        { key: 'n_stock',    label: 'Stock' },
+        { key: 'status',     label: 'Status Stock' },
+        { key: 'f_active',   label: 'Status Aktif' }
+    ];
+
+    var DEFAULT_DOWNLOAD_SETTINGS = {
+        format: 'csv',
+        delimiter: ',',
+        scope: 'filtered',
+        filenamePrefix: 'products',
+        includeInactive: false
+    };
+
+    var downloadColumnsModal  = new bootstrap.Modal(document.getElementById('downloadColumnsModal'));
+    var downloadSettingsModal = new bootstrap.Modal(document.getElementById('downloadSettingsModal'));
+
+    function getDownloadSettings() {
+        try {
+            var raw = localStorage.getItem(DOWNLOAD_SETTINGS_KEY);
+            if (!raw) return $.extend({}, DEFAULT_DOWNLOAD_SETTINGS);
+            return $.extend({}, DEFAULT_DOWNLOAD_SETTINGS, JSON.parse(raw));
+        } catch (e) {
+            return $.extend({}, DEFAULT_DOWNLOAD_SETTINGS);
+        }
+    }
+
+    function saveDownloadSettings(settings) {
+        try {
+            localStorage.setItem(DOWNLOAD_SETTINGS_KEY, JSON.stringify(settings));
+        } catch (e) { /* localStorage unavailable, ignore */ }
+    }
+
+    function getSelectedColumns() {
+        try {
+            var raw = localStorage.getItem(DOWNLOAD_COLUMNS_KEY);
+            if (!raw) return DOWNLOAD_COLUMNS.map(function (c) { return c.key; });
+            var parsed = JSON.parse(raw);
+            return Array.isArray(parsed) && parsed.length ? parsed : DOWNLOAD_COLUMNS.map(function (c) { return c.key; });
+        } catch (e) {
+            return DOWNLOAD_COLUMNS.map(function (c) { return c.key; });
+        }
+    }
+
+    function saveSelectedColumns(cols) {
+        try {
+            localStorage.setItem(DOWNLOAD_COLUMNS_KEY, JSON.stringify(cols));
+        } catch (e) { /* ignore */ }
+    }
+
+    function populateSettingsForm() {
+        var s = getDownloadSettings();
+        $('#settingFormat').val(s.format);
+        $('#settingDelimiter').val(s.delimiter);
+        $('#settingScope').val(s.scope);
+        $('#settingFilename').val(s.filenamePrefix);
+        $('#settingIncludeInactive').prop('checked', !!s.includeInactive);
+        toggleDelimiterVisibility();
+    }
+
+    function toggleDelimiterVisibility() {
+        $('#delimiterWrap').toggle($('#settingFormat').val() === 'csv');
+    }
+
+    $('#settingFormat').on('change', toggleDelimiterVisibility);
+
+    $('#btnDownloadSettings').on('click', function () {
+        populateSettingsForm();
+        downloadSettingsModal.show();
+    });
+
+    $('#downloadSettingsForm').on('submit', function (e) {
+        e.preventDefault();
+        var settings = {
+            format: $('#settingFormat').val(),
+            delimiter: $('#settingDelimiter').val(),
+            scope: $('#settingScope').val(),
+            filenamePrefix: ($('#settingFilename').val() || 'products').trim(),
+            includeInactive: $('#settingIncludeInactive').is(':checked')
+        };
+        saveDownloadSettings(settings);
+        downloadSettingsModal.hide();
+        showAlert('Pengaturan download berhasil disimpan.', 'success');
+    });
+
+    function populateColumnList() {
+        var selected = getSelectedColumns();
+        var $list = $('#downloadColumnList');
+        $list.empty();
+
+        DOWNLOAD_COLUMNS.forEach(function (col) {
+            var checked = selected.indexOf(col.key) !== -1;
+            var id = 'col_' + col.key;
+            var col$ = $(
+                '<div class="col">' +
+                    '<div class="form-check">' +
+                        '<input class="form-check-input dl-col-check" type="checkbox" value="' + col.key + '" id="' + id + '"' + (checked ? ' checked' : '') + '>' +
+                        '<label class="form-check-label" for="' + id + '">' + col.label + '</label>' +
+                    '</div>' +
+                '</div>'
+            );
+            $list.append(col$);
+        });
+
+        var s = getDownloadSettings();
+        var scopeText = s.scope === 'page'
+            ? 'File akan berisi baris pada halaman tabel yang sedang tampil.'
+            : 'File akan berisi seluruh data sesuai pencarian saat ini (semua halaman).';
+        scopeText += s.includeInactive ? ' Produk non-aktif ikut disertakan.' : ' Produk non-aktif tidak disertakan.';
+        scopeText += ' Ubah lewat tombol pengaturan (ikon gear).';
+        $('#downloadScopeInfo').text(scopeText);
+    }
+
+    $('#btnDownload').on('click', function () {
+        populateColumnList();
+        downloadColumnsModal.show();
+    });
+
+    $('#btnSelectAllCols').on('click', function () {
+        $('.dl-col-check').prop('checked', true);
+    });
+
+    $('#btnClearAllCols').on('click', function () {
+        $('.dl-col-check').prop('checked', false);
+    });
+
+    function csvEscape(value, delimiter) {
+        value = value === null || value === undefined ? '' : String(value);
+        var needsQuote = value.indexOf('"') !== -1 || value.indexOf('\n') !== -1 || value.indexOf(delimiter) !== -1;
+        value = value.replace(/"/g, '""');
+        return needsQuote ? '"' + value + '"' : value;
+    }
+
+    function formatCellValue(row, key) {
+        switch (key) {
+            case 'v_price':  return Number(row.v_price || 0);
+            case 'n_stock':  return row.n_stock;
+            case 'f_active': return (row.f_active === 't') ? 'Aktif' : 'Deactivated';
+            default:         return row[key] != null ? row[key] : '';
+        }
+    }
+
+    function buildRowsForDownload(settings) {
+        var rows = (settings.scope === 'page')
+            ? getCurrentPageRows()
+            : allRows.slice();
+
+        if (!settings.includeInactive) {
+            rows = rows.filter(function (r) { return r.f_active === 't'; });
+        }
+        return rows;
+    }
+
+    function getCurrentPageRows() {
+        var isAll = (PAGE_SIZE === 'all');
+        var effectiveSize = isAll ? Math.max(allRows.length, 1) : PAGE_SIZE;
+        var start = isAll ? 0 : (currentPage - 1) * effectiveSize;
+        return isAll ? allRows.slice() : allRows.slice(start, start + effectiveSize);
+    }
+
+    function triggerBlobDownload(blob, filename) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function downloadAsCsv(cols, rows, settings) {
+        var delimiter = settings.delimiter === '\\t' ? '\t' : settings.delimiter;
+        var lines = [];
+        lines.push(cols.map(function (c) { return csvEscape(c.label, delimiter); }).join(delimiter));
+
+        rows.forEach(function (row) {
+            var line = cols.map(function (c) {
+                return csvEscape(formatCellValue(row, c.key), delimiter);
+            }).join(delimiter);
+            lines.push(line);
+        });
+
+        var csvContent = '\uFEFF' + lines.join('\r\n');
+        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        triggerBlobDownload(blob, settings.filenamePrefix + '.csv');
+    }
+
+    function downloadAsExcel(cols, rows, settings) {
+        var html = '<table border="1"><thead><tr>';
+        cols.forEach(function (c) { html += '<th>' + escapeHtml(c.label) + '</th>'; });
+        html += '</tr></thead><tbody>';
+
+        rows.forEach(function (row) {
+            html += '<tr>';
+            cols.forEach(function (c) {
+                html += '<td>' + escapeHtml(formatCellValue(row, c.key)) + '</td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+
+        var blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        triggerBlobDownload(blob, settings.filenamePrefix + '.xls');
+    }
+
+    $('#btnConfirmDownload').on('click', function () {
+        var selectedKeys = $('.dl-col-check:checked').map(function () { return $(this).val(); }).get();
+
+        if (selectedKeys.length === 0) {
+            showAlert('Pilih minimal satu kolom untuk di-download.', 'warning');
+            return;
+        }
+
+        saveSelectedColumns(selectedKeys);
+
+        var cols = DOWNLOAD_COLUMNS.filter(function (c) { return selectedKeys.indexOf(c.key) !== -1; });
+        var settings = getDownloadSettings();
+        var rows = buildRowsForDownload(settings);
+
+        if (rows.length === 0) {
+            showAlert('Tidak ada data untuk di-download.', 'warning');
+            return;
+        }
+
+        if (settings.format === 'excel') {
+            downloadAsExcel(cols, rows, settings);
+        } else {
+            downloadAsCsv(cols, rows, settings);
+        }
+
+        downloadColumnsModal.hide();
+        showAlert('Download dimulai (' + rows.length + ' baris).', 'success');
+    });
+
+    // ===================== END DOWNLOAD FEATURE =====================
 
     loadProducts('');
 });

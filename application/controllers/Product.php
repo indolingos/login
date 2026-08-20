@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Product extends CI_Controller {
+class Product extends MY_Controller {
 
     public function __construct()
     {
@@ -41,6 +41,7 @@ class Product extends CI_Controller {
     public function index()
     {
         $data['categories'] = $this->Product_model->get_categories();
+        $data['username']   = $this->username;
         $this->load->view('product_list', $data);
     }
 
