@@ -78,7 +78,7 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
-                        <tr>
+                        <tr id="tableHeadRow">
                             <th style="width:40px;">No</th>
                             <th>Kode</th>
                             <th>Nama</th>
@@ -223,6 +223,7 @@
     </div>
 </div>
 
+<!-- Download settings: just a column checklist + filename -->
 <div class="modal fade" id="downloadSettingsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -313,7 +314,69 @@ $(function () {
         return $('<div>').text(str == null ? '' : str).html();
     }
 
+    function totalColumnCount() {
+        // +1 for the Action column, which always shows and has no checkbox.
+        return getDownloadSettings().columns.length + 1;
+    }
+
+    var COLUMN_TH_ATTRS = {
+        no:         ' style="width:40px;"',
+        i_product:  '',
+        e_product:  '',
+        e_category: '',
+        v_price:    ' class="text-end"',
+        n_stock:    ' class="text-end"',
+        status:     '',
+        f_active:   ' class="text-center" style="width:70px;"'
+    };
+
+    function visibleColumnKeys() {
+        var settings = getDownloadSettings();
+        return DOWNLOAD_COLUMNS
+            .filter(function (c) { return settings.columns.indexOf(c.key) !== -1; })
+            .map(function (c) { return c.key; });
+    }
+
+    function renderTableHead() {
+        var $row = $('#tableHeadRow');
+        $row.empty();
+        visibleColumnKeys().forEach(function (key) {
+            var col = DOWNLOAD_COLUMNS.filter(function (c) { return c.key === key; })[0];
+            $row.append('<th' + (COLUMN_TH_ATTRS[key] || '') + '>' + col.label + '</th>');
+        });
+        $row.append('<th style="width:130px;">Action</th>');
+    }
+
+    function cellHtml(key, row, idx, start) {
+        switch (key) {
+            case 'no':
+                return '<td>' + (start + idx + 1) + '</td>';
+            case 'i_product':
+                return '<td>' + escapeHtml(row.i_product) + '</td>';
+            case 'e_product':
+                return '<td>' + escapeHtml(row.e_product) + '</td>';
+            case 'e_category':
+                return '<td>' + escapeHtml(row.e_category || '-') + '</td>';
+            case 'v_price':
+                return '<td class="text-end">' + formatRupiah(row.v_price) + '</td>';
+            case 'n_stock':
+                return '<td class="text-end">' + row.n_stock + '</td>';
+            case 'status':
+                return '<td><span class="badge badge-status ' + statusBadgeClass(row.status) + '">' + row.status + '</span></td>';
+            case 'f_active':
+                var isActive = (row.f_active === 't');
+                return '<td class="text-center">' +
+                    (isActive
+                        ? '<i class="bi bi-check-circle-fill active-icon" title="Aktif"></i>'
+                        : '<i class="bi bi-x-circle-fill active-icon" title="Deactivated"></i>') +
+                    '</td>';
+            default:
+                return '';
+        }
+    }
+
     function loadProducts(search) {
+        $('#tableLoading td').attr('colspan', totalColumnCount());
         $('#tableLoading').show();
         $.ajax({
             url: BASE_URL + 'list_data',
@@ -326,7 +389,7 @@ $(function () {
             renderTable();
         }).fail(function () {
             allRows = [];
-            $('#productTableBody').html('<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data.</td></tr>');
+            $('#productTableBody').html('<tr><td colspan="' + totalColumnCount() + '" class="text-center text-danger py-4">Gagal memuat data.</td></tr>');
             $('#paginationControls').empty();
             $('#paginationInfo').text('');
         }).always(function () {
@@ -335,6 +398,9 @@ $(function () {
     }
 
     function renderTable() {
+        renderTableHead();
+        var visibleCols = visibleColumnKeys();
+
         var $body = $('#productTableBody');
         $body.empty();
 
@@ -346,7 +412,7 @@ $(function () {
         if (currentPage < 1) currentPage = 1;
 
         if (totalRows === 0) {
-            $body.append('<tr><td colspan="9" class="text-center text-muted py-4">Data produk tidak ditemukan.</td></tr>');
+            $body.append('<tr><td colspan="' + (visibleCols.length + 1) + '" class="text-center text-muted py-4">Data produk tidak ditemukan.</td></tr>');
             $('#paginationControls').empty();
             $('#paginationInfo').text('');
             return;
@@ -360,20 +426,9 @@ $(function () {
             var tr = $('<tr>');
             if (!isActive) tr.addClass('row-deactivated');
 
-            tr.append('<td>' + (start + idx + 1) + '</td>');
-            tr.append('<td>' + escapeHtml(row.i_product) + '</td>');
-            tr.append('<td>' + escapeHtml(row.e_product) + '</td>');
-            tr.append('<td>' + escapeHtml(row.e_category || '-') + '</td>');
-            tr.append('<td class="text-end">' + formatRupiah(row.v_price) + '</td>');
-            tr.append('<td class="text-end">' + row.n_stock + '</td>');
-            tr.append('<td><span class="badge badge-status ' + statusBadgeClass(row.status) + '">' + row.status + '</span></td>');
-            tr.append(
-                '<td class="text-center">' +
-                    (isActive
-                        ? '<i class="bi bi-check-circle-fill active-icon" title="Aktif"></i>'
-                        : '<i class="bi bi-x-circle-fill active-icon" title="Deactivated"></i>') +
-                '</td>'
-            );
+            visibleCols.forEach(function (key) {
+                tr.append(cellHtml(key, row, idx, start));
+            });
 
             if (isActive) {
                 tr.append(
@@ -631,6 +686,11 @@ $(function () {
         });
     });
 
+    // ===================== DOWNLOAD FEATURE =====================
+    // Settings are saved server-side per logged-in user (see
+    // get_download_settings / save_download_settings in Product.php),
+    // so each account keeps its own preferences across browsers/devices.
+
     var DOWNLOAD_COLUMNS = [
         { key: 'no',         label: 'No' },
         { key: 'i_product',  label: 'Kode' },
@@ -650,6 +710,12 @@ $(function () {
         };
     }
 
+    // Builds a full settings object field-by-field instead of deep-merging
+    // with $.extend(true, ...): that previously merged the `columns` arrays
+    // by index rather than replacing them, so a shorter saved array (after
+    // unchecking columns) silently inherited leftover items from the
+    // defaults array's tail — which is why unchecked columns like Stock/Aktif
+    // kept coming back checked.
     function normalizeDownloadSettings(raw) {
         var d = defaultDownloadSettings();
         if (!raw || typeof raw !== 'object') return d;
@@ -660,7 +726,7 @@ $(function () {
         };
     }
 
-    var downloadSettingsCache = null;
+    var downloadSettingsCache = null; // populated from the server; null = not loaded yet (use defaults)
 
     function getDownloadSettings() {
         return normalizeDownloadSettings(downloadSettingsCache);
@@ -676,6 +742,8 @@ $(function () {
         }).fail(function () {
             downloadSettingsCache = null;
         }).always(function () {
+            renderTableHead();
+            if (allRows.length) renderTable();
             if (callback) callback();
         });
     }
@@ -752,6 +820,8 @@ $(function () {
                 downloadSettingsCache = settings;
                 downloadSettingsModal.hide();
                 showAlert(res.message || 'Pengaturan download berhasil disimpan.', 'success');
+                renderTableHead();
+                if (allRows.length) renderTable();
             } else {
                 showAlert(res.message || 'Gagal menyimpan pengaturan.', 'danger');
             }
@@ -771,6 +841,7 @@ $(function () {
         return needsQuote ? '"' + value + '"' : value;
     }
 
+    // Raw value for a cell (used by both CSV and Excel export).
     function rawCellValue(row, key, index) {
         switch (key) {
             case 'no':       return index + 1;
@@ -781,7 +852,10 @@ $(function () {
         }
     }
 
-
+    // CSV has no cell type info, so spreadsheet apps guess the type from the
+    // text and switch large plain numbers to scientific notation (e.g. Harga
+    // showing as "3.365E+09"). Wrapping numeric cells as ="123" forces the
+    // app to treat them as text and display the full number.
     function csvCellValue(row, key, index) {
         var value = rawCellValue(row, key, index);
         if (key === 'v_price' || key === 'n_stock') {
@@ -825,7 +899,8 @@ $(function () {
 
         var ws = XLSX.utils.aoa_to_sheet(aoa);
 
-  
+        // Give numeric columns a real number format so Excel never falls
+        // back to scientific notation, and keep the currency column readable.
         cols.forEach(function (c, colIdx) {
             if (c.key !== 'v_price' && c.key !== 'n_stock') return;
             var fmt = (c.key === 'v_price') ? '#,##0' : '0';
@@ -868,6 +943,7 @@ $(function () {
         showAlert('Download dimulai (' + rows.length + ' baris).', 'success');
     });
 
+    // ===================== END DOWNLOAD FEATURE =====================
 
     fetchDownloadSettings();
     loadProducts('');
