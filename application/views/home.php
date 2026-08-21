@@ -21,6 +21,17 @@
     }
     .home-card .card-body { text-align: center; padding: 2.5rem 1.5rem; }
     .home-card .home-icon { font-size: 2.75rem; color: #0d6efd; margin-bottom: 1rem; }
+
+    /* Simple nested table */
+    .nested-table th,
+    .nested-table td {
+        vertical-align: middle;
+    }
+
+    .nested-table table {
+        margin: 0;
+        background-color: #fff;
+    }
 </style>
 </head>
 <body>
@@ -67,6 +78,73 @@
                     </div>
                 </div>
             </a>
+        </div>
+    </div>
+
+    <!-- Simple table inside a table cell -->
+    <div class="card mt-4 border-0 shadow-sm">
+        <div class="card-body">
+            <h5 class="mb-3">Nested Table</h5>
+
+            <div class="table-responsive">
+                <table class="table table-bordered nested-table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>No</th>
+                            <th>Data Utama</th>
+                            <th>Detail Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>Data 1</td>
+                            <td>
+                                <!-- This is the table inside the parent table -->
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Detail</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Detail 1</td>
+                                            <td>Value 1</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Detail 2</td>
+                                            <td>Value 2</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Data 2</td>
+                            <td>
+                                <!-- Copy/edit this inner table when adding your own data -->
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Detail</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Detail 1</td>
+                                            <td>Value 1</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
