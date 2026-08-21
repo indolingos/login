@@ -12,7 +12,7 @@
     .card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
     #tableLoading { display: none; }
     .badge-user { background-color: #0d6efd; font-weight: 600; }
-    tr.user-group-start td { border-top: 2px solid #dee2e6; }
+    .btn-icon { width: 34px; height: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
 </style>
 </head>
 <body>
@@ -23,8 +23,14 @@
             <i class="bi bi-cart-check me-2"></i>Dashboard Pembelian Konsumen
         </span>
         <div class="d-flex align-items-center gap-3">
+            <a href="<?= site_url('home'); ?>" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-house-door me-1"></i>Home
+            </a>
             <a href="<?= site_url('product'); ?>" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-box-seam me-1"></i>Master Product
+                <i class="bi bi-box-seam me-1"></i>Product List
+            </a>
+            <a href="<?= site_url('product_type'); ?>" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-diagram-3 me-1"></i>Jenis Product
             </a>
             <span class="text-light small">
                 <i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($username ?: '-'); ?>
@@ -44,31 +50,29 @@
         <div class="card-body">
 
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Barang yang Mau Dibeli Setiap Konsumen</h5>
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Data Pembelian per Konsumen</h5>
                 <div class="input-group" style="max-width: 300px;">
                     <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Cari username atau produk...">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Cari username...">
                 </div>
             </div>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th style="width:40px;">No</th>
                             <th>Konsumen</th>
-                            <th>Kode</th>
-                            <th>Nama Produk</th>
-                            <th>Kategori</th>
-                            <th class="text-end">Harga</th>
-                            <th class="text-end">Qty</th>
-                            <th class="text-end">Subtotal</th>
+                            <th class="text-end">Jumlah Produk</th>
+                            <th class="text-end">Total Qty</th>
+                            <th class="text-end">Total Pembelian</th>
                             <th>Terakhir Diubah</th>
+                            <th class="text-center" style="width:110px;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody id="cartTableBody">
                         <tr id="tableLoading">
-                            <td colspan="9" class="text-center py-4 text-muted">
+                            <td colspan="7" class="text-center py-4 text-muted">
                                 <div class="spinner-border spinner-border-sm me-2"></div>Memuat data...
                             </td>
                         </tr>
@@ -124,7 +128,7 @@ $(function () {
             renderTable($('#searchInput').val());
         }).fail(function () {
             allRows = [];
-            $('#cartTableBody').html('<tr><td colspan="9" class="text-center text-danger py-4">Gagal memuat data.</td></tr>');
+            $('#cartTableBody').html('<tr><td colspan="7" class="text-center text-danger py-4">Gagal memuat data.</td></tr>');
             $('#summaryInfo').text('');
         }).always(function () {
             $('#tableLoading').hide();
@@ -139,69 +143,45 @@ $(function () {
         if (search) {
             var q = search.toLowerCase();
             rows = allRows.filter(function (r) {
-                return (r.i_username || '').toLowerCase().indexOf(q) !== -1 ||
-                       (r.i_product  || '').toLowerCase().indexOf(q) !== -1 ||
-                       (r.e_product  || '').toLowerCase().indexOf(q) !== -1;
+                return (r.i_username || '').toLowerCase().indexOf(q) !== -1;
             });
         }
 
         if (rows.length === 0) {
-            $body.append('<tr><td colspan="9" class="text-center text-muted py-4">Belum ada konsumen yang memilih barang untuk dibeli.</td></tr>');
+            $body.append('<tr><td colspan="7" class="text-center text-muted py-4">Belum ada konsumen yang memilih barang untuk dibeli.</td></tr>');
             $('#summaryInfo').text('');
             return;
         }
 
         var grandTotal = 0;
-        var userSet = {};
-        var lastUser = null;
-        var pendingGroupRows = [];
-        var userSubtotal = 0;
-        var userLabel = '';
-
-        function flushUserGroup() {
-            if (pendingGroupRows.length === 0) return;
-            pendingGroupRows.forEach(function (tr) { $body.append(tr); });
-            var totalTr = $('<tr class="table-light">');
-            totalTr.append('<td colspan="7" class="text-end fw-semibold">Subtotal untuk ' + escapeHtml(userLabel) + '</td>');
-            totalTr.append('<td class="text-end fw-semibold">' + formatRupiah(userSubtotal) + '</td>');
-            totalTr.append('<td></td>');
-            $body.append(totalTr);
-            pendingGroupRows = [];
-            userSubtotal = 0;
-        }
 
         rows.forEach(function (row, idx) {
-            userSet[row.id_user] = true;
-            var subtotal = row.v_price * row.n_qty;
-            grandTotal += subtotal;
-
-            var isNewGroup = (row.id_user !== lastUser);
-            if (isNewGroup) {
-                flushUserGroup();
-                userLabel = row.i_username;
-            }
-            lastUser = row.id_user;
-            userSubtotal += subtotal;
+            grandTotal += row.v_total;
 
             var tr = $('<tr>');
-            if (isNewGroup) tr.addClass('user-group-start');
-
             tr.append('<td>' + (idx + 1) + '</td>');
             tr.append('<td><span class="badge badge-user"><i class="bi bi-person-fill me-1"></i>' + escapeHtml(row.i_username) + '</span></td>');
-            tr.append('<td>' + escapeHtml(row.i_product) + '</td>');
-            tr.append('<td>' + escapeHtml(row.e_product) + '</td>');
-            tr.append('<td>' + escapeHtml(row.e_category || '-') + '</td>');
-            tr.append('<td class="text-end">' + formatRupiah(row.v_price) + '</td>');
-            tr.append('<td class="text-end">' + row.n_qty + '</td>');
-            tr.append('<td class="text-end">' + formatRupiah(subtotal) + '</td>');
-            tr.append('<td>' + formatDate(row.dt_updated) + '</td>');
+            tr.append('<td class="text-end">' + row.n_items + '</td>');
+            tr.append('<td class="text-end">' + row.n_total_qty + '</td>');
+            tr.append('<td class="text-end fw-semibold">' + formatRupiah(row.v_total) + '</td>');
+            tr.append('<td>' + formatDate(row.dt_last_updated) + '</td>');
 
-            pendingGroupRows.push(tr);
+            var actionTd = $('<td class="text-center">');
+            var btnGroup = $('<div class="d-inline-flex gap-1">');
+            var viewBtn = $('<a class="btn btn-sm btn-outline-primary btn-icon" title="Lihat detail di halaman baru"><i class="bi bi-eye"></i></a>');
+            viewBtn.attr('href', BASE_URL + 'user_detail/' + row.id_user);
+            viewBtn.attr('target', '_blank');
+            var downloadBtn = $('<a class="btn btn-sm btn-outline-success btn-icon" title="Download data pembelian"><i class="bi bi-download"></i></a>');
+            downloadBtn.attr('href', BASE_URL + 'export_user/' + row.id_user);
+            btnGroup.append(viewBtn).append(downloadBtn);
+            actionTd.append(btnGroup);
+            tr.append(actionTd);
+
+            $body.append(tr);
         });
-        flushUserGroup();
 
-        var userCount = Object.keys(userSet).length;
-        $('#summaryInfo').text(userCount + ' konsumen, ' + rows.length + ' baris barang, total ' + formatRupiah(grandTotal) + '.');
+        var userCount = rows.length;
+        $('#summaryInfo').text(userCount + ' konsumen, total pembelian ' + formatRupiah(grandTotal) + '.');
     }
 
     $('#searchInput').on('keyup', function () {

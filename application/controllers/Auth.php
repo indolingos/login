@@ -15,7 +15,7 @@ class Auth extends CI_Controller {
     public function index()
     {
         if ($this->session->userdata('logged_in') === TRUE) {
-            redirect(site_url('product'));
+            redirect(site_url('home'));
             return;
         }
 
@@ -25,7 +25,7 @@ class Auth extends CI_Controller {
     public function signup()
     {
         if ($this->session->userdata('logged_in') === TRUE) {
-            redirect(site_url('product'));
+            redirect(site_url('home'));
             return;
         }
 
@@ -40,7 +40,7 @@ class Auth extends CI_Controller {
         }
 
         if ($this->session->userdata('logged_in') === TRUE) {
-            $this->_json(array('status' => true, 'redirect' => site_url('product')));
+            $this->_json(array('status' => true, 'redirect' => site_url('home')));
             return;
         }
 
@@ -93,7 +93,7 @@ class Auth extends CI_Controller {
         }
 
         if ($this->session->userdata('logged_in') === TRUE) {
-            $this->_json(array('status' => true, 'redirect' => site_url('product')));
+            $this->_json(array('status' => true, 'redirect' => site_url('home')));
             return;
         }
 
@@ -136,11 +136,10 @@ class Auth extends CI_Controller {
         $this->_json(array(
             'status'   => true,
             'message'  => 'Login berhasil.',
-            'redirect' => site_url('product'),
+            'redirect' => site_url('home'),
         ));
     }
 
-   
     public function logout()
     {
         $this->session->sess_destroy();

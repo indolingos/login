@@ -60,6 +60,11 @@ class Product extends MY_Controller {
 
     public function index()
     {
+        if ($this->username === 'admin') {
+            redirect(site_url('product_type'));
+            return;
+        }
+
         $data['categories'] = $this->Product_model->get_categories();
         $data['username']   = $this->username;
         $data['is_admin']   = ($this->username === 'admin');

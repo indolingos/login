@@ -3,18 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Master Product</title>
+<title>Kelola Produk - <?= htmlspecialchars($e_product_type); ?></title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
     body { background-color: #f4f6f9; }
     .navbar-brand { font-weight: 600; }
     .card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    .badge-status {
-        font-size: .78rem;
-        font-weight: 600;
-        padding: .4em .65em;
-    }
+    .badge-status { font-size: .78rem; font-weight: 600; padding: .4em .65em; }
     .badge-habis   { background-color: #dc3545; }
     .badge-menipis { background-color: #fd7e14; }
     .badge-cukup   { background-color: #0d6efd; }
@@ -35,38 +31,31 @@
 <nav class="navbar navbar-dark bg-dark mb-4">
     <div class="container-fluid">
         <span class="navbar-brand mb-0">
-            <i class="bi bi-box-seam me-2"></i>Master Product
+            <i class="bi bi-tag me-2"></i><?= htmlspecialchars($e_product_type); ?>
         </span>
         <div class="d-flex align-items-center gap-3">
-            <?php if (!empty($is_admin)): ?>
             <a href="<?= site_url('home'); ?>" class="btn btn-sm btn-outline-light">
                 <i class="bi bi-house-door me-1"></i>Home
             </a>
-            <a href="<?= site_url('cart'); ?>" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-cart-check me-1"></i>Dashboard Pembelian Konsumen
-            </a>
-            <a href="<?= site_url('product_type'); ?>" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-diagram-3 me-1"></i>Jenis Product
-            </a>
-            <?php endif; ?>
             <span class="text-light small">
                 <i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($username ?: '-'); ?>
             </span>
-            <a href="<?= site_url('auth/logout'); ?>" class="btn btn-sm btn-outline-light">
-                <i class="bi bi-box-arrow-right me-1"></i>Logout
-            </a>
         </div>
     </div>
 </nav>
 
 <div class="container-fluid px-4 pb-5">
 
+    <a href="<?= site_url('product_type'); ?>" class="btn btn-sm btn-outline-secondary mb-3">
+        <i class="bi bi-arrow-left me-1"></i>Kembali ke Jenis Product
+    </a>
+
     <div id="alertPlaceholder"></div>
 
-    <div class="card mb-4">
+    <div class="card">
         <div class="card-body">
 
-            <h5 class="mb-3"><i class="bi bi-box-seam me-2"></i>Product Datas</h5>
+            <h5 class="mb-3"><i class="bi bi-box-seam me-2"></i>Produk dalam "<?= htmlspecialchars($e_product_type); ?>"</h5>
 
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div class="input-group" style="max-width: 340px;">
@@ -82,15 +71,9 @@
                             <i class="bi bi-gear"></i>
                         </button>
                     </div>
-                    <?php if (empty($is_admin)): ?>
-                    <button type="button" class="btn btn-outline-primary" id="btnAddToCart">
-                        <i class="bi bi-cart-plus me-1"></i>Tambah ke Daftar Beli
-                    </button>
-                    <?php else: ?>
                     <button type="button" class="btn btn-primary" id="btnAdd">
                         <i class="bi bi-plus-lg me-1"></i>Tambah Product
                     </button>
-                    <?php endif; ?>
                 </div>
             </div>
 
@@ -98,9 +81,6 @@
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr id="tableHeadRow">
-                            <?php if (empty($is_admin)): ?>
-                            <th style="width:36px;"><input type="checkbox" class="form-check-input" id="checkAllProducts" title="Pilih semua"></th>
-                            <?php endif; ?>
                             <th style="width:40px;">No</th>
                             <th>Kode</th>
                             <th>Nama</th>
@@ -109,9 +89,7 @@
                             <th class="text-end">Stock</th>
                             <th>Status</th>
                             <th class="text-center" style="width:70px;">Aktif</th>
-                            <?php if (!empty($is_admin)): ?>
                             <th style="width:130px;">Action</th>
-                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody id="productTableBody">
@@ -144,52 +122,6 @@
 
         </div>
     </div>
-
-    <?php if (empty($is_admin)): ?>
-    <div class="card">
-        <div class="card-body">
-
-            <h5 class="mb-3"><i class="bi bi-cart-check me-2"></i>Barang yang mau dibeli konsumer</h5>
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th style="width:40px;">No</th>
-                            <th>Kode</th>
-                            <th>Nama</th>
-                            <th>Kategori</th>
-                            <th class="text-end">Harga</th>
-                            <th class="text-end" style="width:110px;">Qty</th>
-                            <th class="text-end">Subtotal</th>
-                            <th style="width:70px;">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="cartTableBody">
-                        <tr id="cartEmptyRow">
-                            <td colspan="8" class="text-center text-muted py-4">Belum ada barang yang dipilih untuk dibeli.</td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr id="cartTotalRow" class="d-none">
-                            <th colspan="6" class="text-end">Total</th>
-                            <th class="text-end" id="cartGrandTotal">Rp 0</th>
-                            <th></th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-        </div>
-    </div>
-    <?php else: ?>
-    <div class="card">
-        <div class="card-body text-center py-5 text-muted">
-            <i class="bi bi-shield-lock display-6 d-block mb-2"></i>
-            <a href="<?= site_url('cart'); ?>">Buka Dashboard Pembelian Konsumen</a>
-        </div>
-    </div>
-    <?php endif; ?>
 </div>
 
 <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
@@ -225,6 +157,9 @@
                                 <option value="<?= $cat['id_category']; ?>"><?= htmlspecialchars($cat['e_category']); ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <?php if (empty($categories)): ?>
+                        <div class="form-text text-warning">Belum ada kategori untuk jenis product ini. Tambahkan kategori dulu di database (lihat mst_category, kolom id_product_type).</div>
+                        <?php endif; ?>
                         <div class="invalid-feedback">Kategori wajib dipilih.</div>
                     </div>
 
@@ -345,9 +280,10 @@
 <script>
 $(function () {
 
-    var BASE_URL   = '<?= site_url('product'); ?>/';
-    var CART_URL   = '<?= site_url('cart'); ?>/';
-    var IS_ADMIN   = <?= !empty($is_admin) ? 'true' : 'false'; ?>;
+    var TYPE_BASE_URL    = '<?= site_url('product_type'); ?>/';
+    var PRODUCT_BASE_URL = '<?= site_url('product'); ?>/';
+    var ID_TYPE = <?= (int) $id_product_type; ?>;
+
     var productModal = new bootstrap.Modal(document.getElementById('productModal'));
     var deleteModal   = new bootstrap.Modal(document.getElementById('deleteModal'));
     var restoreModal  = new bootstrap.Modal(document.getElementById('restoreModal'));
@@ -359,8 +295,8 @@ $(function () {
 
     var PAGE_SIZE = 10;
     var currentPage = 1;
+    var rawRows = [];
     var allRows = [];
-    var cart = {};
 
     function showAlert(message, type) {
         var html = '<div class="alert alert-' + type + ' alert-dismissible fade show" role="alert">' +
@@ -411,16 +347,11 @@ $(function () {
     function renderTableHead() {
         var $row = $('#tableHeadRow');
         $row.empty();
-        if (!IS_ADMIN) {
-            $row.append('<th style="width:36px;"><input type="checkbox" class="form-check-input" id="checkAllProducts" title="Pilih semua"></th>');
-        }
         visibleColumnKeys().forEach(function (key) {
             var col = DOWNLOAD_COLUMNS.filter(function (c) { return c.key === key; })[0];
             $row.append('<th' + (COLUMN_TH_ATTRS[key] || '') + '>' + col.label + '</th>');
         });
-        if (IS_ADMIN) {
-            $row.append('<th style="width:130px;">Action</th>');
-        }
+        $row.append('<th style="width:130px;">Action</th>');
     }
 
     function cellHtml(key, row, idx, start) {
@@ -451,19 +382,28 @@ $(function () {
         }
     }
 
+    function applyFilter(search) {
+        var q = (search || '').toLowerCase();
+        allRows = !q ? rawRows.slice() : rawRows.filter(function (r) {
+            return (r.i_product || '').toLowerCase().indexOf(q) !== -1 ||
+                   (r.e_product || '').toLowerCase().indexOf(q) !== -1;
+        });
+    }
+
     function loadProducts(search) {
         $('#tableLoading td').attr('colspan', totalColumnCount());
         $('#tableLoading').show();
         $.ajax({
-            url: BASE_URL + 'list_data',
+            url: TYPE_BASE_URL + 'detail_data/' + ID_TYPE,
             method: 'POST',
-            data: { search: search || '' },
             dataType: 'json'
         }).done(function (res) {
-            allRows = (res && res.data) || [];
+            rawRows = (res && res.data) || [];
+            applyFilter(search);
             currentPage = 1;
             renderTable();
         }).fail(function () {
+            rawRows = [];
             allRows = [];
             $('#productTableBody').html('<tr><td colspan="' + totalColumnCount() + '" class="text-center text-danger py-4">Gagal memuat data.</td></tr>');
             $('#paginationControls').empty();
@@ -502,33 +442,23 @@ $(function () {
             var tr = $('<tr>');
             if (!isActive) tr.addClass('row-deactivated');
 
-            if (!IS_ADMIN) {
-                if (isActive) {
-                    tr.append('<td><input type="checkbox" class="form-check-input product-select" data-id="' + row.id_product + '"' + (cart[row.id_product] ? ' checked' : '') + '></td>');
-                } else {
-                    tr.append('<td></td>');
-                }
-            }
-
             visibleCols.forEach(function (key) {
                 tr.append(cellHtml(key, row, idx, start));
             });
 
-            if (IS_ADMIN) {
-                if (isActive) {
-                    tr.append(
-                        '<td>' +
-                            '<button type="button" class="btn btn-sm btn-outline-primary btn-edit me-1" data-id="' + row.id_product + '"><i class="bi bi-pencil-square"></i></button>' +
-                            '<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '"><i class="bi bi-trash"></i></button>' +
-                        '</td>'
-                    );
-                } else {
-                    tr.append(
-                        '<td>' +
-                            '<button type="button" class="btn btn-sm btn-outline-success btn-restore" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '" title="Restore Produk"><i class="bi bi-arrow-counterclockwise"></i></button>' +
-                        '</td>'
-                    );
-                }
+            if (isActive) {
+                tr.append(
+                    '<td>' +
+                        '<button type="button" class="btn btn-sm btn-outline-primary btn-edit me-1" data-id="' + row.id_product + '"><i class="bi bi-pencil-square"></i></button>' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger btn-delete" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '"><i class="bi bi-trash"></i></button>' +
+                    '</td>'
+                );
+            } else {
+                tr.append(
+                    '<td>' +
+                        '<button type="button" class="btn btn-sm btn-outline-success btn-restore" data-id="' + row.id_product + '" data-name="' + escapeHtml(row.e_product) + '" title="Restore Produk"><i class="bi bi-arrow-counterclockwise"></i></button>' +
+                    '</td>'
+                );
             }
 
             $body.append(tr);
@@ -564,217 +494,6 @@ $(function () {
         $pg.append(pageItem('Next', currentPage + 1, currentPage === totalPages, false));
     }
 
-    function loadMyCart() {
-        $.ajax({
-            url: CART_URL + 'my_list',
-            method: 'POST',
-            dataType: 'json'
-        }).done(function (res) {
-            var rows = (res && res.data) || [];
-            cart = {};
-            rows.forEach(function (item) {
-                cart[item.id_product] = {
-                    id_product:  item.id_product,
-                    i_product:   item.i_product,
-                    e_product:   item.e_product,
-                    e_category:  item.e_category,
-                    v_price:     item.v_price,
-                    n_stock:     Number(item.n_stock || 0),
-                    qty:         item.qty
-                };
-            });
-            renderCart();
-        });
-    }
-
-    function saveCartItemToServer(idProduct, qty) {
-        $.ajax({
-            url: CART_URL + 'save',
-            method: 'POST',
-            data: { id_product: idProduct, qty: qty },
-            dataType: 'json'
-        }).fail(function () {
-            showAlert('Gagal menyimpan daftar beli ke server.', 'danger');
-        });
-    }
-
-    function removeCartItemFromServer(idProduct) {
-        $.ajax({
-            url: CART_URL + 'remove',
-            method: 'POST',
-            data: { id_product: idProduct },
-            dataType: 'json'
-        }).fail(function () {
-            showAlert('Gagal menghapus item dari server.', 'danger');
-        });
-    }
-
-    function cartCount() {
-        return Object.keys(cart).length;
-    }
-
-    function renderCart() {
-        var $body = $('#cartTableBody');
-        $body.empty();
-
-        var ids = Object.keys(cart);
-
-        if (ids.length === 0) {
-            $body.append('<tr id="cartEmptyRow"><td colspan="8" class="text-center text-muted py-4">Belum ada barang yang dipilih untuk dibeli.</td></tr>');
-            $('#cartTotalRow').addClass('d-none');
-            return;
-        }
-
-        var grandTotal = 0;
-
-        ids.forEach(function (id, idx) {
-            var item = cart[id];
-            var product = allRows.filter(function (r) { return String(r.id_product) === String(id); })[0];
-            if (product) {
-                item.i_product  = product.i_product;
-                item.e_product  = product.e_product;
-                item.e_category = product.e_category;
-                item.v_price    = product.v_price;
-                item.n_stock    = Number(product.n_stock || 0);
-            }
-
-            var maxQty = Math.max(item.n_stock, 0);
-            if (item.qty > maxQty) item.qty = maxQty;
-            if (item.qty < 1 && maxQty >= 1) item.qty = 1;
-
-            var subtotal = item.v_price * item.qty;
-            grandTotal += subtotal;
-
-            var tr = $('<tr>');
-            tr.append('<td>' + (idx + 1) + '</td>');
-            tr.append('<td>' + escapeHtml(item.i_product) + '</td>');
-            tr.append('<td>' + escapeHtml(item.e_product) + '</td>');
-            tr.append('<td>' + escapeHtml(item.e_category || '-') + '</td>');
-            tr.append('<td class="text-end">' + formatRupiah(item.v_price) + '</td>');
-            tr.append(
-                '<td class="text-end">' +
-                    '<input type="number" min="1" step="1" max="' + maxQty + '" class="form-control form-control-sm cart-qty text-end" data-id="' + id + '" value="' + item.qty + '">' +
-                    '<div class="form-text text-muted" style="font-size:.72rem;">Stock: ' + maxQty + '</div>' +
-                '</td>'
-            );
-            tr.append('<td class="text-end">' + formatRupiah(subtotal) + '</td>');
-            tr.append(
-                '<td>' +
-                    '<button type="button" class="btn btn-sm btn-outline-danger btn-cart-remove" data-id="' + id + '"><i class="bi bi-x-lg"></i></button>' +
-                '</td>'
-            );
-            $body.append(tr);
-        });
-
-        $('#cartGrandTotal').text(formatRupiah(grandTotal));
-        $('#cartTotalRow').removeClass('d-none');
-    }
-
-    function addSelectedToCart() {
-        var $checked = $('.product-select:checked');
-        if ($checked.length === 0) {
-            showAlert('Pilih minimal satu produk untuk ditambahkan ke daftar beli.', 'warning');
-            return;
-        }
-
-        var blockedOutOfStock = [];
-        var blockedMaxed = [];
-        var toSave = [];
-
-        $checked.each(function () {
-            var id = $(this).data('id');
-            var product = allRows.filter(function (r) { return String(r.id_product) === String(id); })[0];
-            if (!product) return;
-
-            var stock = Number(product.n_stock || 0);
-
-            if (stock <= 0) {
-                blockedOutOfStock.push(product.e_product);
-                return;
-            }
-
-            if (cart[id]) {
-                if (cart[id].qty >= stock) {
-                    blockedMaxed.push(product.e_product);
-                    return;
-                }
-                cart[id].qty += 1;
-            } else {
-                cart[id] = {
-                    id_product:  product.id_product,
-                    i_product:   product.i_product,
-                    e_product:   product.e_product,
-                    e_category:  product.e_category,
-                    v_price:     product.v_price,
-                    n_stock:     stock,
-                    qty:         1
-                };
-            }
-            toSave.push(id);
-        });
-
-        $checked.prop('checked', false);
-        $('#checkAllProducts').prop('checked', false);
-        renderCart();
-
-        toSave.forEach(function (id) {
-            saveCartItemToServer(id, cart[id].qty);
-        });
-
-        if (blockedOutOfStock.length || blockedMaxed.length) {
-            var msgParts = [];
-            if (blockedOutOfStock.length) msgParts.push('Stok habis: ' + blockedOutOfStock.join(', '));
-            if (blockedMaxed.length) msgParts.push('Sudah mencapai batas stok: ' + blockedMaxed.join(', '));
-            showAlert(msgParts.join('. ') + '.', 'warning');
-        } else {
-            showAlert('Barang berhasil ditambahkan ke daftar beli konsumer.', 'success');
-        }
-    }
-
-    $('#btnAddToCart').on('click', addSelectedToCart);
-
-    $('#productTableBody').on('change', '#checkAllProducts', function () {
-        var checked = $(this).is(':checked');
-        $('.product-select').prop('checked', checked);
-    });
-
-    $('#tableHeadRow').on('change', '#checkAllProducts', function () {
-        var checked = $(this).is(':checked');
-        $('.product-select').prop('checked', checked);
-    });
-
-    var cartQtySaveTimer = null;
-
-    $('#cartTableBody').on('input change', '.cart-qty', function () {
-        var id = $(this).data('id');
-        if (!cart[id]) return;
-
-        var maxQty = Math.max(Number(cart[id].n_stock || 0), 0);
-        var qty = parseInt($(this).val(), 10);
-
-        if (isNaN(qty) || qty < 1) qty = 1;
-        if (qty > maxQty) {
-            qty = maxQty;
-            showAlert('Qty tidak boleh melebihi stock yang tersedia (' + maxQty + ').', 'warning');
-        }
-
-        cart[id].qty = qty;
-        renderCart();
-
-        clearTimeout(cartQtySaveTimer);
-        cartQtySaveTimer = setTimeout(function () {
-            saveCartItemToServer(id, qty);
-        }, 400);
-    });
-
-    $('#cartTableBody').on('click', '.btn-cart-remove', function () {
-        var id = $(this).data('id');
-        delete cart[id];
-        renderCart();
-        removeCartItemFromServer(id);
-        $('.product-select[data-id="' + id + '"]').prop('checked', false);
-    });
-
     $('#paginationControls').on('click', 'a.page-link', function (e) {
         e.preventDefault();
         if ($(this).parent().hasClass('disabled') || $(this).parent().hasClass('active')) return;
@@ -794,7 +513,11 @@ $(function () {
     $('#searchInput').on('keyup', function () {
         var val = $(this).val();
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(function () { loadProducts(val); }, 350);
+        searchTimer = setTimeout(function () {
+            applyFilter(val);
+            currentPage = 1;
+            renderTable();
+        }, 250);
     });
 
     function resetForm() {
@@ -815,7 +538,7 @@ $(function () {
     $('#productTableBody').on('click', '.btn-edit', function () {
         var id = $(this).data('id');
         $.ajax({
-            url: BASE_URL + 'get/' + id,
+            url: PRODUCT_BASE_URL + 'get/' + id,
             method: 'GET',
             dataType: 'json'
         }).done(function (res) {
@@ -851,7 +574,7 @@ $(function () {
 
         kodeCheckTimer = setTimeout(function () {
             $.ajax({
-                url: BASE_URL + 'check_kode',
+                url: PRODUCT_BASE_URL + 'check_kode',
                 method: 'POST',
                 data: { i_product: kode, id_product: $('#id_product').val() },
                 dataType: 'json'
@@ -903,7 +626,7 @@ $(function () {
         $('#saveSpinner').removeClass('d-none');
 
         $.ajax({
-            url: BASE_URL + 'save',
+            url: PRODUCT_BASE_URL + 'save',
             method: 'POST',
             data: $(this).serialize(),
             dataType: 'json'
@@ -937,7 +660,7 @@ $(function () {
         $('#deleteSpinner').removeClass('d-none');
 
         $.ajax({
-            url: BASE_URL + 'delete/' + deleteTargetId,
+            url: PRODUCT_BASE_URL + 'delete/' + deleteTargetId,
             method: 'POST',
             dataType: 'json'
         }).done(function (res) {
@@ -966,7 +689,7 @@ $(function () {
         $('#restoreSpinner').removeClass('d-none');
 
         $.ajax({
-            url: BASE_URL + 'restore/' + restoreTargetId,
+            url: PRODUCT_BASE_URL + 'restore/' + restoreTargetId,
             method: 'POST',
             dataType: 'json'
         }).done(function (res) {
@@ -1012,7 +735,7 @@ $(function () {
         };
     }
 
-    var downloadSettingsCache = null;  
+    var downloadSettingsCache = null;
 
     function getDownloadSettings() {
         return normalizeDownloadSettings(downloadSettingsCache);
@@ -1020,7 +743,7 @@ $(function () {
 
     function fetchDownloadSettings(callback) {
         $.ajax({
-            url: BASE_URL + 'get_download_settings',
+            url: PRODUCT_BASE_URL + 'get_download_settings',
             method: 'GET',
             dataType: 'json'
         }).done(function (res) {
@@ -1092,7 +815,7 @@ $(function () {
         $submitBtn.prop('disabled', true);
 
         $.ajax({
-            url: BASE_URL + 'save_download_settings',
+            url: PRODUCT_BASE_URL + 'save_download_settings',
             method: 'POST',
             data: {
                 'columns[]':      settings.columns,
@@ -1222,12 +945,8 @@ $(function () {
         showAlert('Download dimulai (' + rows.length + ' baris).', 'success');
     });
 
-
     fetchDownloadSettings();
     loadProducts('');
-    if (!IS_ADMIN) {
-        loadMyCart();
-    }
 });
 </script>
 </body>
